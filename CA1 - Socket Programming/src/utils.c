@@ -70,3 +70,13 @@ void addClient(ClientArray* arr, Client client) {
     arr->ptr[arr->size] = client;
     ++arr->size;
 }
+
+void removeClient(ClientArray* arr, int id) {
+    for (int i = 0; i < arr->size; i++) {
+        if (arr->ptr[i].id == id) {
+            arr->ptr[i] = arr->ptr[arr->size - 1];
+            --arr->size;
+            break;
+        }
+    }
+}

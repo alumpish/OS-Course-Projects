@@ -70,85 +70,83 @@ int main(int argc, char const* argv[]) {
         select(max_sd + 1, &working_set, NULL, NULL, NULL);
 
         for (int i = 0; i <= max_sd; i++) {
-            if (i != STDIN_FILENO) {
-                write(STDOUT_FILENO, "\x1B[2K\r", 5);
-            }
-            if (i == STDIN_FILENO) {
-                memset(cmdBuf, 0, 1024);
-                getInput(STDIN_FILENO, NULL, cmdBuf, BUF_CLI);
-                char* cmdPart = strtok(cmdBuf, " ");
-                if (cmdPart == NULL)
-                    continue;
-
-                if (!strcmp(cmdPart, "help")) {
-                    if (client_type == STUDENT)
-                        logNormal(
-                            "Available commands:\n"
-                            " - ask <question>: send a question to server.\n"
-                            " - show_sessions: show progressing sessions\n");
-                    else if (client_type == TA)
-                        logNormal(
-                            "Available commands:\n"
-                            " - show_questions: show list of all available questions.\n"
-                            " - answer <question_id>: choose a question to discuss about it.\n");
+            if (FD_ISSET(i, &working_set)) {
+                if (i != STDIN_FILENO) {
+                    write(STDOUT_FILENO, "\x1B[2K\r", 5);
                 }
-                else if (!strcmp(cmdPart, "ask")) {
-                    char* cmdPart = strtok(NULL, " ");
-                    if (cmdPart == NULL) {
-                        logError("No question provided");
+                if (i == STDIN_FILENO) {
+                    memset(msgBuf, 0, 1024);
+                    memset(cmdBuf, 0, 1024);
+                    getInput(STDIN_FILENO, NULL, cmdBuf, BUF_CLI);
+                    char* cmdPart = strtok(cmdBuf, " ");
+                    if (cmdPart == NULL)
+                        continue;
+
+                    if (!strcmp(cmdPart, "help")) {
+                        if (client_type == STUDENT)
+                            logNormal(
+                                "Available commands:\n"
+                                " - ask <question>: send a question to server.\n"
+                                " - show_sessions: show progressing sessions\n");
+                        else if (client_type == TA)
+                            logNormal(
+                                "Available commands:\n"
+                                " - show_questions: show list of all available questions.\n"
+                                " - answer <question_id>: choose a question to discuss about it.\n");
+                    }
+                    else if (!strcmp(cmdPart, "ask")) {
+                        char* cmdPart = strtok(NULL, " ");
+                        if (cmdPart == NULL) {
+                            logError("No question provided");
+                            continue;
+                        }
+
+                        snprintf(msgBuf, BUF_MSG, "$ASK$%s", cmdPart);
+                        send(server_fd, msgBuf, strlen(msgBuf), 0);
+                        // alarm(TIMEOUT);
+                    }
+                    else if (!strcmp(cmdPart, "show_sessions")) {
+                        snprintf(msgBuf, BUF_MSG, "$SSN$");
+                        send(server_fd, msgBuf, strlen(msgBuf), 0);
+                        // alarm(TIMEOUT);
+                        logInfo("Session request sent.");
+                    }
+                    else if (!strcmp(cmdPart, "show_questions")) {
+                        snprintf(msgBuf, BUF_MSG, "$SQN$");
+                        send(server_fd, msgBuf, strlen(msgBuf), 0);
+                        // alarm(TIMEOUT);
+                        logInfo("Q request sent.");
+                    }
+                    else if (!strcmp(cmdPart, "answer")) {
+                        if (cmdPart == NULL) {
+                            logError("No answer provided");
+                            continue;
+                        }
+
+                        cmdPart = strtok(NULL, "");
+                        snprintf(msgBuf, BUF_MSG, "$ANS$%s", cmdPart);
+                        send(server_fd, msgBuf, strlen(msgBuf), 0);
+                        // alarm(TIMEOUT);
+                    }
+                    else {
+                        logError("Invalid command.");
+                    }
+                }
+                else if (i == server_fd) {
+                    int bytes_received;
+                    memset(buffer, 0, 1024);
+                    bytes_received = recv(i, buffer, 1024, 0);
+
+                    if (bytes_received == 0) { // EOF
+                        printf("client fd = %d closed\n", i);
+                        close(i);
+                        FD_CLR(i, &master_set);
                         continue;
                     }
 
-                    snprintf(msgBuf, BUF_MSG, "$ASK$%s", cmdPart);
-                    send(server_fd, msgBuf, strlen(msgBuf), 0);
-                    // alarm(TIMEOUT);
-                }
-                else if (!strcmp(cmdPart, "show_sessions")) {
-                    snprintf(msgBuf, BUF_MSG, "$SSN$");
-                    send(server_fd, msgBuf, strlen(msgBuf), 0);
-                    // alarm(TIMEOUT);
-                    logInfo("Session request sent.");
-                }
-                else if (!strcmp(cmdPart, "show_questions")) {
-                    // cmdPart = strtok(NULL, "");
-                    snprintf(msgBuf, BUF_MSG, "$SQN$");
-                    send(server_fd, msgBuf, strlen(msgBuf), 0);
-                    // alarm(TIMEOUT);
-                    logInfo("Q request sent.");
-                }
-                else if (!strcmp(cmdPart, "answer")) {
-                    // char* cmdPart = strtok(NULL, " ");
-                    if (cmdPart == NULL) {
-                        logError("No answer provided");
-                        continue;
+                    if (!strncmp(buffer, "$PRM$", 5)) {
+                        logError("Permission Denied!");
                     }
-
-                    cmdPart = strtok(NULL, "");
-                    snprintf(msgBuf, BUF_MSG, "$ANS$%s", cmdPart);
-                    send(server_fd, msgBuf, strlen(msgBuf), 0);
-                    // alarm(TIMEOUT);
-                }
-                else {
-                    logError("Invalid command.");
-                }
-
-                // printf("%s\n", cmdBuf);
-                // memset(cmdBuf, 0, 1024);
-            }
-            else if (i == server_fd) {
-                int bytes_received;
-                memset(buffer, 0, 1024);
-                bytes_received = recv(i, buffer, 1024, 0);
-
-                if (bytes_received == 0) { // EOF
-                    printf("client fd = %d closed\n", i);
-                    close(i);
-                    FD_CLR(i, &master_set);
-                    continue;
-                }
-
-                if (!strncmp(buffer, "$PRM$", 5)) {
-                    logError("Permission Denied!");
                 }
             }
         }

@@ -16,5 +16,6 @@ void printNum(int fd, int num);
 void getInput(int fd, const char* prompt, char* dst, size_t dstLen);
 
 void addClient(ClientArray* arr, Client client);
+void removeClient(ClientArray* arr, int id);
 
 #endif // UTILS_H_INCLUDE

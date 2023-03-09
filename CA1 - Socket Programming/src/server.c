@@ -51,7 +51,6 @@ int acceptClient(int server_fd) {
 }
 
 int getClientType(ClientArray clients, int id) {
-    // find client by id
     for (int i = 0; i < clients.size; i++) {
         if (clients.ptr[i].id == id)
             return clients.ptr[i].type;
@@ -101,26 +100,28 @@ int main(int argc, char const* argv[]) {
                         printf("client fd = %d closed\n", i);
                         close(i);
                         FD_CLR(i, &master_set);
+                        removeClient(&clients, i);
                         continue;
                     }
 
                     if (!strncmp(buffer, "$STU$", 5)) {
                         printf("client %d: %s\n", i, buffer);
                         Client client;
-                        client.id = new_socket;
+                        client.id = i;
                         client.type = STUDENT;
                         addClient(&clients, client);
                     }
                     else if (!strncmp(buffer, "$TAA$", 5)) {
                         printf("client %d: %s\n", i, buffer);
                         Client client;
-                        client.id = new_socket;
+                        client.id = i;
                         client.type = TA;
                         addClient(&clients, client);
                     }
                     else if (getClientType(clients, i) == STUDENT) {
                         if (!strncmp(buffer, "$ASK$", 5)) {
-                            printf("Question %d: %s\n", i, buffer);
+                            char* question = buffer + 5;
+                            logInfo(question);
                         }
                         else if (!strncmp(buffer, "$SSN$", 5)) {
                             printf("Show Sessions %d: %s\n", i, buffer);
@@ -141,6 +142,9 @@ int main(int argc, char const* argv[]) {
                             snprintf(msgBuf, BUF_MSG, "$PRM$");
                             send(i, msgBuf, strlen(msgBuf), 0);
                         }
+                    }
+                    else if (getClientType(clients, i) == -1){
+                        logInfo("4");
                     }
                 }
             }
