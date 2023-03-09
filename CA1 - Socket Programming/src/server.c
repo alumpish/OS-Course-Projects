@@ -138,7 +138,8 @@ int main(int argc, char const* argv[]) {
                             printf("Answer %d: %s\n", i, buffer);
                         }
                         else {
-                            logError("Permission Denied!");
+                            snprintf(msgBuf, BUF_MSG, "$PRM$");
+                            send(i, msgBuf, strlen(msgBuf), 0);
                         }
                     }
                 }

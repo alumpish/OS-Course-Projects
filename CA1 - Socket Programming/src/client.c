@@ -32,10 +32,10 @@ int connectServer(int port) {
 int main(int argc, char const* argv[]) {
     int server_fd, new_socket, max_sd;
     ClientType client_type;
+    char buffer[1024] = {0};
 
     server_fd = connectServer(8080);
     printf("%d", server_fd);
-
 
     char cmdBuf[BUF_CLI] = {'\0'};
     char msgBuf[BUF_MSG] = {'\0'};
@@ -64,8 +64,6 @@ int main(int argc, char const* argv[]) {
     max_sd = server_fd;
     FD_SET(STDIN_FILENO, &master_set);
     FD_SET(server_fd, &master_set);
-
-
 
     while (1) {
         working_set = master_set;
@@ -104,7 +102,6 @@ int main(int argc, char const* argv[]) {
                     snprintf(msgBuf, BUF_MSG, "$ASK$%s", cmdPart);
                     send(server_fd, msgBuf, strlen(msgBuf), 0);
                     // alarm(TIMEOUT);
-                    logInfo("Question sent.");
                 }
                 else if (!strcmp(cmdPart, "show_sessions")) {
                     snprintf(msgBuf, BUF_MSG, "$SSN$");
@@ -130,7 +127,6 @@ int main(int argc, char const* argv[]) {
                     snprintf(msgBuf, BUF_MSG, "$ANS$%s", cmdPart);
                     send(server_fd, msgBuf, strlen(msgBuf), 0);
                     // alarm(TIMEOUT);
-                    logInfo("Answer sent.");
                 }
                 else {
                     logError("Invalid command.");
@@ -138,6 +134,22 @@ int main(int argc, char const* argv[]) {
 
                 // printf("%s\n", cmdBuf);
                 // memset(cmdBuf, 0, 1024);
+            }
+            else if (i == server_fd) {
+                int bytes_received;
+                memset(buffer, 0, 1024);
+                bytes_received = recv(i, buffer, 1024, 0);
+
+                if (bytes_received == 0) { // EOF
+                    printf("client fd = %d closed\n", i);
+                    close(i);
+                    FD_CLR(i, &master_set);
+                    continue;
+                }
+
+                if (!strncmp(buffer, "$PRM$", 5)) {
+                    logError("Permission Denied!");
+                }
             }
         }
     }
