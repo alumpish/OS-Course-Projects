@@ -31,6 +31,7 @@ int connectServer(int port) {
 
 int main(int argc, char const* argv[]) {
     int server_fd, new_socket, max_sd;
+    int broadcast_fd = -1;
     ClientType client_type;
     char buffer[1024] = {0};
 
@@ -87,12 +88,14 @@ int main(int argc, char const* argv[]) {
                             logNormal(
                                 "Available commands:\n"
                                 " - ask <question>: send a question to server.\n"
-                                " - show_sessions: show progressing sessions\n");
+                                " - show_sessions: show progressing sessions\n"
+                                " - connect <port>: connect to a TA.");
                         else if (client_type == TA)
                             logNormal(
                                 "Available commands:\n"
                                 " - show_questions: show list of all available questions.\n"
-                                " - answer <question_id>: choose a question to discuss about it.\n");
+                                " - answer <question_id>: choose a question to discuss about it.\n"
+                                " - connect <port>: connect to a student.");
                     }
                     else if (!strcmp(cmdPart, "ask")) {
                         char* cmdPart = strtok(NULL, " ");
@@ -115,17 +118,35 @@ int main(int argc, char const* argv[]) {
                         snprintf(msgBuf, BUF_MSG, "$SQN$");
                         send(server_fd, msgBuf, strlen(msgBuf), 0);
                         // alarm(TIMEOUT);
-                        logInfo("Q request sent.");
+                        // logInfo("Q request sent.");
                     }
                     else if (!strcmp(cmdPart, "answer")) {
+                        char* cmdPart = strtok(NULL, " ");
                         if (cmdPart == NULL) {
                             logError("No answer provided");
                             continue;
                         }
 
-                        cmdPart = strtok(NULL, "");
                         snprintf(msgBuf, BUF_MSG, "$ANS$%s", cmdPart);
                         send(server_fd, msgBuf, strlen(msgBuf), 0);
+                        // alarm(TIMEOUT);
+                    }
+                    else if (!strcmp(cmdPart, "connect")) {
+                        char* cmdPart = strtok(NULL, " ");
+                        if (cmdPart == NULL) {
+                            logError("No port provided");
+                            continue;
+                        }
+                        int port, res;
+                        char* answer = buffer + 5;
+                        res = strToInt(answer, &port);
+                        if (res == 1 || res == 2) {
+                            logError("Invalid question id");
+                            continue;
+                        }
+
+                        broadcast_fd = initBroadcastSocket(port);
+                        FD_SET(broadcast_fd, &master_set);
                         // alarm(TIMEOUT);
                     }
                     else {
@@ -147,6 +168,28 @@ int main(int argc, char const* argv[]) {
                     if (!strncmp(buffer, "$PRM$", 5)) {
                         logError("Permission Denied!");
                     }
+                    else if (!strncmp(buffer, "$PRT$", 5)) {
+                        int port, res;
+                        char* port_str = buffer + 5;
+                        res = strToInt(port_str, &port);
+                        printf("port = %d\n", port);
+                    }
+                    else {
+                        printf(buffer);
+                    }
+                }
+                else if (i == broadcast_fd) {
+                    int bytes_received;
+                    memset(buffer, 0, 1024);
+                    bytes_received = recv(i, buffer, 1024, 0);
+
+                    if (bytes_received == 0) { // EOF
+                        printf("client fd = %d closed\n", i);
+                        close(i);
+                        FD_CLR(i, &master_set);
+                        continue;
+                    }
+                    printf(buffer);
                 }
             }
         }

@@ -18,8 +18,8 @@ typedef enum {
 
 typedef enum {
     WAITING = 0,
-    DISCUSS = 1,
-    EXPIRED = 2
+    DISCUSSING = 1,
+    ANSWERED = 2
 } QuestionType;
 
 typedef struct
@@ -36,11 +36,12 @@ typedef struct
 
 typedef struct
 {
+    int id;
     int author;
     QuestionType type;
     char qMsg[BUF_MSG];
     char aMsg[BUF_MSG];
-    BroadcastInfo bcast;
+    int port;
 } Question;
 
 typedef struct
@@ -48,6 +49,7 @@ typedef struct
     Question* ptr;
     int size;
     int capacity;
+    int last;
 } QuestionArray;
 
 typedef struct {
@@ -55,5 +57,11 @@ typedef struct {
     int size;
     int capacity;
 } ClientArray;
+
+typedef struct {
+    int* ptr;
+    int size;
+    int capacity;
+} PortArray;
 
 #endif TYPES_H

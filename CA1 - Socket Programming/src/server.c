@@ -60,6 +60,7 @@ int getClientType(ClientArray clients, int id) {
 
 int main(int argc, char const* argv[]) {
     int server_fd, new_socket, max_sd;
+    srand(time(NULL));
 
     char buffer[1024] = {0};
     char msgBuf[BUF_MSG] = {'\0'};
@@ -68,6 +69,12 @@ int main(int argc, char const* argv[]) {
 
     ClientArray clients;
     memset(&clients, 0, sizeof(clients));
+    QuestionArray questions;
+    memset(&questions, 0, sizeof(questions));
+    questions.last = 0;
+
+    PortArray ports;
+    memset(&ports, 0, sizeof(ports));
 
     server_fd = setupServer(8080);
 
@@ -121,7 +128,12 @@ int main(int argc, char const* argv[]) {
                     else if (getClientType(clients, i) == STUDENT) {
                         if (!strncmp(buffer, "$ASK$", 5)) {
                             char* question = buffer + 5;
-                            logInfo(question);
+                            Question q;
+                            q.id = questions.last++;
+                            q.author = i;
+                            q.type = WAITING;
+                            strcpy(q.qMsg, question);
+                            addQuestion(&questions, q);
                         }
                         else if (!strncmp(buffer, "$SSN$", 5)) {
                             printf("Show Sessions %d: %s\n", i, buffer);
@@ -133,17 +145,42 @@ int main(int argc, char const* argv[]) {
                     }
                     else if (getClientType(clients, i) == TA) {
                         if (!strncmp(buffer, "$SQN$", 5)) {
-                            printf("Show Questions %d: %s\n", i, buffer);
+                            // logInfo("Show Questions");
+                            sendWaitingQuestions(i, &questions);
                         }
                         else if (!strncmp(buffer, "$ANS$", 5)) {
-                            printf("Answer %d: %s\n", i, buffer);
+                            int q_id, res;
+                            char* answer = buffer + 5;
+                            res = strToInt(answer, &q_id);
+                            if (res == 1 || res == 2) {
+                                logInfo("Invalid question id");
+                                // snprintf(msgBuf, BUF_MSG, "$PRM$");
+                                // send(i, msgBuf, strlen(msgBuf), 0);
+                            }
+                            else {
+                                Question q = getQuestion(&questions, q_id);
+                                if (q.id == -1) {
+                                    logInfo("This question does not exist");
+                                    // snprintf(msgBuf, BUF_MSG, "$PRM$");
+                                    // send(i, msgBuf, strlen(msgBuf), 0);
+                                }
+                                else {
+                                    q.type = DISCUSSING;
+                                    int port = generatePort(&ports);
+                                    q.port = port;
+
+                                    snprintf(msgBuf, BUF_MSG, "$PRT$%d", port);
+                                    send(q.author, msgBuf, strlen(msgBuf), 0);
+
+                                }
+                            }
                         }
                         else {
                             snprintf(msgBuf, BUF_MSG, "$PRM$");
                             send(i, msgBuf, strlen(msgBuf), 0);
                         }
                     }
-                    else if (getClientType(clients, i) == -1){
+                    else if (getClientType(clients, i) == -1) {
                         logInfo("4");
                     }
                 }

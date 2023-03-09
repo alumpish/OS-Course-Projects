@@ -80,3 +80,112 @@ void removeClient(ClientArray* arr, int id) {
         }
     }
 }
+
+void addQuestion(QuestionArray* arr, Question question) {
+    if (arr->size == arr->capacity) {
+        if (arr->capacity == 0)
+            arr->capacity = 1;
+        Question* arrNew = (Question*)realloc(arr->ptr, arr->capacity * 2 * sizeof(Question));
+        if (arrNew == NULL) {
+            logError("Allocation error.");
+            exit(EXIT_FAILURE);
+        }
+        arr->ptr = arrNew;
+        arr->capacity *= 2;
+    }
+    arr->ptr[arr->size] = question;
+    ++arr->size;
+}
+
+void sendWaitingQuestions(int fd, QuestionArray* arr) {
+    for (int i = 0; i < arr->size; i++) {
+        if (arr->ptr[i].type == WAITING) {
+            char msgBuf[BUF_MSG];
+
+            snprintf(msgBuf, BUF_MSG, "Q%d: %s\n", arr->ptr[i].id, arr->ptr[i].qMsg);
+            write(fd, msgBuf, strlen(msgBuf));
+        }
+    }
+}
+
+int strToInt(const char* str, int* res) {
+    char* end;
+    long num = strtol(str, &end, 10);
+
+    if (*end != '\0') return 1;
+    if (errno == ERANGE) return 2;
+
+    *res = num;
+    return 0;
+}
+
+Question getQuestion(QuestionArray* arr, int id) {
+    for (int i = 0; i < arr->size; i++) {
+        if (arr->ptr[i].id == id) {
+            return arr->ptr[i];
+        }
+    }
+    Question q;
+    q.id = -1;
+    return q;
+}
+
+// add port to ports array
+void addPort(PortArray* arr, int port) {
+    if (arr->size == arr->capacity) {
+        if (arr->capacity == 0)
+            arr->capacity = 1;
+        int* arrNew = (int*)realloc(arr->ptr, arr->capacity * 2 * sizeof(int));
+        if (arrNew == NULL) {
+            logError("Allocation error.");
+            exit(EXIT_FAILURE);
+        }
+        arr->ptr = arrNew;
+        arr->capacity *= 2;
+    }
+    arr->ptr[arr->size] = port;
+    ++arr->size;
+}
+
+int isExistingPort(PortArray* arr, int port) {
+    for (int i = 0; i < arr->size; i++) {
+        if (arr->ptr[i] == port) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int generatePort(PortArray* ports) {
+    int port = 0;
+    while (port < 1024 || isExistingPort(&ports, port)) {
+        port = rand() % 65535;
+    }
+    return port;
+}
+
+int initBroadcastSocket(int port) {
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0) {
+        errnoPrint();
+        exit(EXIT_FAILURE);
+    }
+
+    int broadcast = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
+        errnoPrint();
+        exit(EXIT_FAILURE);
+    }
+
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+
+    if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        errnoPrint();
+        exit(EXIT_FAILURE);
+    }
+
+    return sock;
+}
