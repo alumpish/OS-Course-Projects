@@ -5,8 +5,8 @@ SRC_DIR = src
 OBJECT_DIR = obj
 
 
-OUT_CLIENT = client
-OUT_SERVER = server
+OUT_CLIENT = client.out
+OUT_SERVER = server.out
 
 VPATH = $(SRC_DIR)
 
