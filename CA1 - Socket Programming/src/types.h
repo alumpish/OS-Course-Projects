@@ -11,7 +11,6 @@
 #define BCAST_IP  "192.168.1.255"
 #define TIMEOUT   60
 
-
 typedef enum {
     STUDENT = 0,
     TA = 1
@@ -23,20 +22,38 @@ typedef enum {
     EXPIRED = 2
 } QuestionType;
 
-typedef struct {
+typedef struct
+{
+    int id;
     ClientType type;
 } Client;
 
-typedef struct {
+typedef struct
+{
     int fd;
     struct sockaddr_in addr;
 } BroadcastInfo;
 
-typedef struct {
+typedef struct
+{
+    int author;
     QuestionType type;
     char qMsg[BUF_MSG];
     char aMsg[BUF_MSG];
     BroadcastInfo bcast;
-};
+} Question;
+
+typedef struct
+{
+    Question* ptr;
+    int size;
+    int capacity;
+} QuestionArray;
+
+typedef struct {
+    Client* ptr;
+    int size;
+    int capacity;
+} ClientArray;
 
 #endif TYPES_H
