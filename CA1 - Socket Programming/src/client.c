@@ -56,10 +56,92 @@ ClientType getClientType(int server_fd) {
     }
 }
 
+void cli(fd_set* master_set, int* broadcast_fd, int server_fd, ClientType client_type) {
+    char cmdBuf[BUF_CLI] = {'\0'};
+    char msgBuf[BUF_MSG] = {'\0'};
+    // memset(msgBuf, 0, 1024);
+    // memset(cmdBuf, 0, 1024);
+
+    getInput(STDIN_FILENO, NULL, cmdBuf, BUF_CLI);
+    char* cmdPart = strtok(cmdBuf, " ");
+    if (cmdPart == NULL)
+        return;
+
+    if (!strcmp(cmdPart, "help")) {
+        if (client_type == STUDENT)
+            logNormal(
+                "Available commands:\n"
+                " - ask <question>: send a question to server.\n"
+                " - show_sessions: show progressing sessions\n"
+                " - connect <port>: connect to a TA.");
+        else if (client_type == TA)
+            logNormal(
+                "Available commands:\n"
+                " - show_questions: show list of all available questions.\n"
+                " - answer <question_id>: choose a question to discuss about it.\n"
+                " - connect <port>: connect to a student.");
+    }
+    else if (!strcmp(cmdPart, "ask")) {
+        char* cmdPart = strtok(NULL, " ");
+        if (cmdPart == NULL) {
+            logError("No question provided");
+            return;
+        }
+
+        snprintf(msgBuf, BUF_MSG, "$ASK$%s", cmdPart);
+        send(server_fd, msgBuf, strlen(msgBuf), 0);
+        // alarm(TIMEOUT);
+    }
+    else if (!strcmp(cmdPart, "show_sessions")) {
+        snprintf(msgBuf, BUF_MSG, "$SSN$");
+        send(server_fd, msgBuf, strlen(msgBuf), 0);
+        // alarm(TIMEOUT);
+        logInfo("Session request sent.");
+    }
+    else if (!strcmp(cmdPart, "show_questions")) {
+        snprintf(msgBuf, BUF_MSG, "$SQN$");
+        send(server_fd, msgBuf, strlen(msgBuf), 0);
+        // alarm(TIMEOUT);
+        // logInfo("Q request sent.");
+    }
+    else if (!strcmp(cmdPart, "answer")) {
+        char* cmdPart = strtok(NULL, " ");
+        if (cmdPart == NULL) {
+            logError("No answer provided");
+            return;
+        }
+
+        snprintf(msgBuf, BUF_MSG, "$ANS$%s", cmdPart);
+        send(server_fd, msgBuf, strlen(msgBuf), 0);
+        // alarm(TIMEOUT);
+    }
+    else if (!strcmp(cmdPart, "connect")) {
+        char* cmdPart = strtok(NULL, " ");
+        if (cmdPart == NULL) {
+            logError("No port provided");
+            return;
+        }
+        int port, res;
+        res = strToInt(cmdPart, &port);
+        if (res == 1 || res == 2) {
+            logError("Invalid question id");
+            return;
+        }
+
+        *broadcast_fd = initBroadcastSocket(port);
+        FD_SET(*broadcast_fd, master_set);
+        // alarm(TIMEOUT);
+    }
+    else {
+        logError("Invalid command.");
+    }
+}
+
+
 int main(int argc, char const* argv[]) {
     int server_fd, new_socket, max_sd;
     int broadcast_fd = -1;
-    
+
     char buffer[1024] = {0};
 
     server_fd = connectServer(8080);
@@ -67,10 +149,7 @@ int main(int argc, char const* argv[]) {
 
     ClientType client_type = getClientType(server_fd);
 
-    char cmdBuf[BUF_CLI] = {'\0'};
-    char msgBuf[BUF_MSG] = {'\0'};
-
-    fd_set master_set, working_set;
+        fd_set master_set, working_set;
 
     FD_ZERO(&master_set);
     max_sd = server_fd;
@@ -87,82 +166,7 @@ int main(int argc, char const* argv[]) {
                     write(STDOUT_FILENO, "\x1B[2K\r", 5);
                 }
                 if (i == STDIN_FILENO) {
-                    memset(msgBuf, 0, 1024);
-                    memset(cmdBuf, 0, 1024);
-                    getInput(STDIN_FILENO, NULL, cmdBuf, BUF_CLI);
-                    char* cmdPart = strtok(cmdBuf, " ");
-                    if (cmdPart == NULL)
-                        continue;
-
-                    if (!strcmp(cmdPart, "help")) {
-                        if (client_type == STUDENT)
-                            logNormal(
-                                "Available commands:\n"
-                                " - ask <question>: send a question to server.\n"
-                                " - show_sessions: show progressing sessions\n"
-                                " - connect <port>: connect to a TA.");
-                        else if (client_type == TA)
-                            logNormal(
-                                "Available commands:\n"
-                                " - show_questions: show list of all available questions.\n"
-                                " - answer <question_id>: choose a question to discuss about it.\n"
-                                " - connect <port>: connect to a student.");
-                    }
-                    else if (!strcmp(cmdPart, "ask")) {
-                        char* cmdPart = strtok(NULL, " ");
-                        if (cmdPart == NULL) {
-                            logError("No question provided");
-                            continue;
-                        }
-
-                        snprintf(msgBuf, BUF_MSG, "$ASK$%s", cmdPart);
-                        send(server_fd, msgBuf, strlen(msgBuf), 0);
-                        // alarm(TIMEOUT);
-                    }
-                    else if (!strcmp(cmdPart, "show_sessions")) {
-                        snprintf(msgBuf, BUF_MSG, "$SSN$");
-                        send(server_fd, msgBuf, strlen(msgBuf), 0);
-                        // alarm(TIMEOUT);
-                        logInfo("Session request sent.");
-                    }
-                    else if (!strcmp(cmdPart, "show_questions")) {
-                        snprintf(msgBuf, BUF_MSG, "$SQN$");
-                        send(server_fd, msgBuf, strlen(msgBuf), 0);
-                        // alarm(TIMEOUT);
-                        // logInfo("Q request sent.");
-                    }
-                    else if (!strcmp(cmdPart, "answer")) {
-                        char* cmdPart = strtok(NULL, " ");
-                        if (cmdPart == NULL) {
-                            logError("No answer provided");
-                            continue;
-                        }
-
-                        snprintf(msgBuf, BUF_MSG, "$ANS$%s", cmdPart);
-                        send(server_fd, msgBuf, strlen(msgBuf), 0);
-                        // alarm(TIMEOUT);
-                    }
-                    else if (!strcmp(cmdPart, "connect")) {
-                        char* cmdPart = strtok(NULL, " ");
-                        if (cmdPart == NULL) {
-                            logError("No port provided");
-                            continue;
-                        }
-                        int port, res;
-                        char* answer = buffer + 5;
-                        res = strToInt(answer, &port);
-                        if (res == 1 || res == 2) {
-                            logError("Invalid question id");
-                            continue;
-                        }
-
-                        broadcast_fd = initBroadcastSocket(port);
-                        FD_SET(broadcast_fd, &master_set);
-                        // alarm(TIMEOUT);
-                    }
-                    else {
-                        logError("Invalid command.");
-                    }
+                    cli (&master_set, &broadcast_fd, server_fd, client_type);
                 }
                 else if (i == server_fd) {
                     int bytes_received;
