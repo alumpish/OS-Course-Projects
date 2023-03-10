@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 #include "ansi_colors.h"
 #include "logger.h"
@@ -158,7 +159,7 @@ int isExistingPort(PortArray* arr, int port) {
 
 int generatePort(PortArray* ports) {
     int port = 0;
-    while (port < 1024 || isExistingPort(&ports, port)) {
+    while (port < 1024 || isExistingPort(ports, port)) {
         port = rand() % 65535;
     }
     return port;

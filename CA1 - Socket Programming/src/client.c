@@ -56,7 +56,7 @@ ClientType getClientType(int server_fd) {
     }
 }
 
-void cli(fd_set* master_set, BroadcastInfo* br_info, int server_fd, ClientType client_type) {
+void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd, ClientType client_type) {
     char cmdBuf[BUF_CLI] = {'\0'};
     char msgBuf[BUF_MSG] = {'\0'};
     // memset(msgBuf, 0, 1024);
@@ -68,12 +68,7 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int server_fd, ClientType c
         return;
 
     if (br_info->fd != -1) {
-        snprintf(msgBuf, BUF_MSG, "%d %d %d", br_info->fd, br_info->addr.sin_port, br_info->addr.sin_addr.s_addr, br_info->addr.sin_family);
-
         sendto(br_info->fd, cmdPart, strlen(cmdPart), 0, (struct sockaddr*)&(br_info->addr), sizeof(br_info->addr));
-        logInfo(msgBuf);
-        logInfo(cmdPart);
-
         return;
     }
 
@@ -140,8 +135,9 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int server_fd, ClientType c
 
         *br_info = initBroadcastSocket(port);
         FD_SET(br_info->fd, master_set);
-        snprintf(msgBuf, BUF_MSG, "br_fd %d", br_info->fd);
-        logInfo(msgBuf);
+
+        if (br_info->fd > *max_sd)
+            *max_sd = br_info->fd;
 
         // alarm(TIMEOUT);
     }
@@ -177,14 +173,11 @@ int main(int argc, char const* argv[]) {
 
         for (int i = 0; i <= max_sd; i++) {
             if (FD_ISSET(i, &working_set)) {
-                snprintf(buffer, 1024, "fd = %d", i);
-                logInfo(buffer);
-
                 if (i != STDIN_FILENO) {
                     write(STDOUT_FILENO, "\x1B[2K\r", 5);
                 }
                 if (i == STDIN_FILENO) {
-                    cli(&master_set, &brInfo, server_fd, client_type);
+                    cli(&master_set, &brInfo, &max_sd, server_fd, client_type);
                 }
                 else if (i == server_fd) {
                     logInfo("mew");
@@ -226,8 +219,6 @@ int main(int argc, char const* argv[]) {
                     printf(buffer);
                 }
                 else if (i == brInfo.fd) {
-                    logInfo("Receiving");
-
                     int bytes_received;
                     memset(buffer, 0, 1024);
                     bytes_received = recv(i, buffer, 1024, 0);
@@ -238,7 +229,7 @@ int main(int argc, char const* argv[]) {
                         FD_CLR(i, &master_set);
                         continue;
                     }
-                    printf(buffer);
+                    logNormal(buffer);
                 }
             }
         }
