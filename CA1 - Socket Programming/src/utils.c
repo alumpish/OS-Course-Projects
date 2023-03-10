@@ -164,28 +164,27 @@ int generatePort(PortArray* ports) {
     return port;
 }
 
-int initBroadcastSocket(int port) {
-    int sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0) {
-        errnoPrint();
-        exit(EXIT_FAILURE);
-    }
+BroadcastInfo initBroadcastSocket(int port) {
+    int sock, broadcast = 1, opt = 1;
+    char buffer[1024] = {0};
+    struct sockaddr_in bc_address;
 
-    int broadcast = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
-        errnoPrint();
-        exit(EXIT_FAILURE);
-    }
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+    setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
 
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+    bc_address.sin_family = AF_INET; 
+    bc_address.sin_port = htons(8080); 
+    bc_address.sin_addr.s_addr = inet_addr("172.30.143.255");
 
-    if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        errnoPrint();
-        exit(EXIT_FAILURE);
-    }
+    // snprintf(buffer, BUF_MSG, "%d %d", bc_address.sin_port, bc_address.sin_addr.s_addr, bc_address.sin_family);
+    // logInfo(buffer);
 
-    return sock;
+
+    bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
+    BroadcastInfo br_info;
+    br_info.fd = sock;
+    br_info.addr = bc_address;
+
+    return br_info;
 }
