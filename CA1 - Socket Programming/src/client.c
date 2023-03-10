@@ -28,36 +28,47 @@ int connectServer(int port) {
 
     return fd;
 }
+ClientType getClientType(int server_fd) {
+    logNormal("Which are you? (1-Student, 2-TA)");
+    while (1) {
+        char cmdBuf[BUF_CLI] = {'\0'};
+        char msgBuf[BUF_MSG] = {'\0'};
+        ClientType client_type;
+
+        getInput(STDIN_FILENO, NULL, cmdBuf, BUF_CLI);
+
+        if (strcmp(cmdBuf, "1") == 0) {
+            client_type = STUDENT;
+            snprintf(msgBuf, BUF_MSG, "$STU$");
+            send(server_fd, msgBuf, strlen(msgBuf), 0);
+            return client_type;
+        }
+        else if (strcmp(cmdBuf, "2") == 0) {
+            client_type = TA;
+            snprintf(msgBuf, BUF_MSG, "$TAA$");
+            send(server_fd, msgBuf, strlen(msgBuf), 0);
+            return client_type;
+        }
+        else {
+            logError("Invalid input");
+            continue;
+        }
+    }
+}
 
 int main(int argc, char const* argv[]) {
     int server_fd, new_socket, max_sd;
     int broadcast_fd = -1;
-    ClientType client_type;
+    
     char buffer[1024] = {0};
 
     server_fd = connectServer(8080);
     printf("%d", server_fd);
 
+    ClientType client_type = getClientType(server_fd);
+
     char cmdBuf[BUF_CLI] = {'\0'};
     char msgBuf[BUF_MSG] = {'\0'};
-
-    logNormal("Which are you? (1-Student, 2-TA)");
-    getInput(STDIN_FILENO, NULL, cmdBuf, BUF_CLI);
-
-    if (strcmp(cmdBuf, "1") == 0) {
-        client_type = STUDENT;
-        snprintf(msgBuf, BUF_MSG, "$STU$");
-        send(server_fd, msgBuf, strlen(msgBuf), 0);
-    }
-    else if (strcmp(cmdBuf, "2") == 0) {
-        client_type = TA;
-        snprintf(msgBuf, BUF_MSG, "$TAA$");
-        send(server_fd, msgBuf, strlen(msgBuf), 0);
-    }
-    else {
-        logError("Invalid input");
-        return 1;
-    }
 
     fd_set master_set, working_set;
 
