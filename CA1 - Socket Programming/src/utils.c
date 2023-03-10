@@ -174,7 +174,7 @@ BroadcastInfo initBroadcastSocket(int port) {
     setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
 
     bc_address.sin_family = AF_INET; 
-    bc_address.sin_port = htons(8080); 
+    bc_address.sin_port = htons(port); 
     bc_address.sin_addr.s_addr = inet_addr("172.30.143.255");
 
     // snprintf(buffer, BUF_MSG, "%d %d", bc_address.sin_port, bc_address.sin_addr.s_addr, bc_address.sin_family);
