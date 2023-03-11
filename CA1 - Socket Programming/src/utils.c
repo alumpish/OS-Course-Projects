@@ -165,7 +165,7 @@ int generatePort(PortArray* ports) {
     return port;
 }
 
-BroadcastInfo initBroadcastSocket(int port) {
+void initBroadcastSocket(BroadcastInfo* br_info, int port) {
     int sock, broadcast = 1, opt = 1;
     struct sockaddr_in bc_address;
 
@@ -178,9 +178,13 @@ BroadcastInfo initBroadcastSocket(int port) {
     bc_address.sin_addr.s_addr = inet_addr("172.30.143.255");
 
     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
-    BroadcastInfo br_info;
-    br_info.fd = sock;
-    br_info.addr = bc_address;
+    br_info->fd = sock;
+    br_info->addr = bc_address;
 
-    return br_info;
+}
+
+void saveQuestion(Question q) {
+    char buffer[1024] = {'\0'};
+    snprintf(buffer, BUF_MSG, "Q%d: %s -> %s\n", q.id, q.qMsg, q.aMsg);
+    writeToFile("questions", ".txt", buffer);
 }

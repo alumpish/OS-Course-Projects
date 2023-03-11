@@ -59,8 +59,6 @@ ClientType getClientType(int server_fd) {
 void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd, ClientType client_type) {
     char cmdBuf[BUF_CLI] = {'\0'};
     char msgBuf[BUF_MSG] = {'\0'};
-    // memset(msgBuf, 0, 1024);
-    // memset(cmdBuf, 0, 1024);
 
     getInput(STDIN_FILENO, NULL, cmdBuf, BUF_CLI);
     char* cmdPart = strtok(cmdBuf, " ");
@@ -108,7 +106,6 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
         snprintf(msgBuf, BUF_MSG, "$SQN$");
         send(server_fd, msgBuf, strlen(msgBuf), 0);
         // alarm(TIMEOUT);
-        // logInfo("Q request sent.");
     }
     else if (!strcmp(cmdPart, "answer")) {
         char* cmdPart = strtok(NULL, " ");
@@ -134,7 +131,7 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
             return;
         }
 
-        *br_info = initBroadcastSocket(port);
+        initBroadcastSocket(br_info, port);
         FD_SET(br_info->fd, master_set);
 
         if (br_info->fd > *max_sd)
@@ -147,14 +144,29 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
     }
 }
 
+// function that ger buffer and return  until fisrt $ or end of buffer
+char* getUntilDollar(char* buffer) {
+    char* temp = malloc(sizeof(char) * 1024);
+    int i = 0;
+    while (buffer[i] != '$' && buffer[i] != '\0') {
+        temp[i] = buffer[i];
+        i++;
+    }
+    temp[i] = '\0';
+
+    return temp;
+}
+
 int main(int argc, char const* argv[]) {
     int server_fd, new_socket, max_sd;
 
     char buffer[1024] = {0};
+    char msgBuf[BUF_MSG] = {'\0'};
 
     BroadcastInfo br_info;
     memset(&br_info, 0, sizeof(br_info));
     br_info.fd = -1;
+    br_info.q_id = -1;
 
     server_fd = connectServer(8080);
 
@@ -180,7 +192,6 @@ int main(int argc, char const* argv[]) {
                     cli(&master_set, &br_info, &max_sd, server_fd, client_type);
                 }
                 else if (i == server_fd) {
-                    logInfo("mew");
                     int bytes_received;
                     memset(buffer, 0, 1024);
                     bytes_received = recv(i, buffer, 1024, 0);
@@ -196,10 +207,17 @@ int main(int argc, char const* argv[]) {
                         logError("Permission Denied!");
                     }
                     else if (!strncmp(buffer, "$PRT$", 5)) {
-                        int port, res;
-                        char* port_str = buffer + 5;
-                        res = strToInt(port_str, &port);
-                        printf("port = %d\n", port);
+                        int port, q_id;
+
+                        // char* port_str = getUntilDollar(after_d);
+                        char* port_str = strtok(buffer + 5, "$");
+                        strToInt(port_str, &port);
+                        char* q_id_str = strtok(NULL, "$");
+                        strToInt(q_id_str, &q_id);
+
+                        br_info.q_id = q_id;
+
+                        printf("port %d for question [%d]\n", port, q_id);
                     }
                     else {
                         printf(buffer);
@@ -210,10 +228,18 @@ int main(int argc, char const* argv[]) {
                     memset(buffer, 0, 1024);
                     bytes_received = recv(i, buffer, 1024, 0);
 
-                    if (bytes_received == 0) { // EOF
+                    if (
+                        bytes_received == 0 || !strncmp(buffer, "$close", 6)) {
                         printf("client fd = %d closed\n", i);
                         close(i);
                         FD_CLR(i, &master_set);
+                        br_info.fd = -1;
+
+                        getInput(STDIN_FILENO, "Enter Answer of this question:\n", buffer, 1024);
+                        memset(msgBuf, 0, BUF_MSG);
+                        snprintf(msgBuf, 1024, "$CLS$%d$%s", br_info.q_id, buffer);
+                        send(server_fd, msgBuf, BUF_MSG, 0);
+
                         continue;
                     }
                     if (!br_info.sending)

@@ -1,0 +1,6 @@
+Q0: fksjf -> 0
+Q0: skfj -> 0
+Q0: kdsjf -> 0
+Q1: fks -> aaaaa
+Q1: jkljl -> dorsoosos
+Q0: fksfj -> fdfdfdfd

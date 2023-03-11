@@ -33,6 +33,7 @@ typedef struct
     int fd;
     struct sockaddr_in addr;
     int sending;
+    int q_id;
 } BroadcastInfo;
 
 typedef struct

@@ -26,6 +26,7 @@ Question getQuestion(QuestionArray* arr, int id);
 void addPort(PortArray* arr, int port);
 int isExistingPort(PortArray* arr, int port);
 int generatePort(PortArray* ports);
-BroadcastInfo initBroadcastSocket(int port);
+void initBroadcastSocket(BroadcastInfo* br_info, int port);
+void saveQuestion(Question q);
 
 #endif

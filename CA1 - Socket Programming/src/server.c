@@ -6,8 +6,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
-#include <time.h>   
 
 #include "logger.h"
 #include "types.h"
@@ -126,6 +126,17 @@ int main(int argc, char const* argv[]) {
                         client.type = TA;
                         addClient(&clients, client);
                     }
+                    else if (!strncmp(buffer, "$CLS$", 5)) {
+                        int q_id;
+                        char* q_id_str = strtok(buffer + 5, "$");
+                        strToInt(q_id_str, &q_id);
+                        char* aMsg = strtok(NULL, "$");
+
+                        Question q = getQuestion(&questions, q_id);
+                        strcpy(q.aMsg, aMsg);
+                        q.type = ANSWERED;
+                        saveQuestion(q);
+                    }
                     else if (getClientType(clients, i) == STUDENT) {
                         if (!strncmp(buffer, "$ASK$", 5)) {
                             char* question = buffer + 5;
@@ -170,9 +181,9 @@ int main(int argc, char const* argv[]) {
                                     int port = generatePort(&ports);
                                     q.port = port;
 
-                                    snprintf(msgBuf, BUF_MSG, "$PRT$%d", port);
+                                    snprintf(msgBuf, BUF_MSG, "$PRT$%d$%d", port, q.id);
                                     send(q.author, msgBuf, strlen(msgBuf), 0);
-
+                                    send(i, msgBuf, strlen(msgBuf), 0);
                                 }
                             }
                         }
