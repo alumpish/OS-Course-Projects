@@ -68,6 +68,7 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
         return;
 
     if (br_info->fd != -1) {
+        br_info->sending = 1;
         sendto(br_info->fd, cmdPart, strlen(cmdPart), 0, (struct sockaddr*)&(br_info->addr), sizeof(br_info->addr));
         return;
     }
@@ -148,13 +149,12 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
 
 int main(int argc, char const* argv[]) {
     int server_fd, new_socket, max_sd;
-    int broadcast_fd = -1;
 
     char buffer[1024] = {0};
 
-    BroadcastInfo brInfo;
-    memset(&brInfo, 0, sizeof(brInfo));
-    brInfo.fd = -1;
+    BroadcastInfo br_info;
+    memset(&br_info, 0, sizeof(br_info));
+    br_info.fd = -1;
 
     server_fd = connectServer(8080);
 
@@ -177,7 +177,7 @@ int main(int argc, char const* argv[]) {
                     write(STDOUT_FILENO, "\x1B[2K\r", 5);
                 }
                 if (i == STDIN_FILENO) {
-                    cli(&master_set, &brInfo, &max_sd, server_fd, client_type);
+                    cli(&master_set, &br_info, &max_sd, server_fd, client_type);
                 }
                 else if (i == server_fd) {
                     logInfo("mew");
@@ -205,7 +205,7 @@ int main(int argc, char const* argv[]) {
                         printf(buffer);
                     }
                 }
-                else if (i == broadcast_fd) {
+                else if (i == br_info.fd) {
                     int bytes_received;
                     memset(buffer, 0, 1024);
                     bytes_received = recv(i, buffer, 1024, 0);
@@ -216,20 +216,10 @@ int main(int argc, char const* argv[]) {
                         FD_CLR(i, &master_set);
                         continue;
                     }
-                    printf(buffer);
-                }
-                else if (i == brInfo.fd) {
-                    int bytes_received;
-                    memset(buffer, 0, 1024);
-                    bytes_received = recv(i, buffer, 1024, 0);
-
-                    if (bytes_received == 0) { // EOF
-                        printf("client fd = %d closed\n", i);
-                        close(i);
-                        FD_CLR(i, &master_set);
-                        continue;
-                    }
-                    logNormal(buffer);
+                    if (!br_info.sending)
+                        logNormal(buffer);
+                    else
+                        br_info.sending = 0;
                 }
             }
         }

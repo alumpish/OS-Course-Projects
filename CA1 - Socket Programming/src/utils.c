@@ -167,7 +167,6 @@ int generatePort(PortArray* ports) {
 
 BroadcastInfo initBroadcastSocket(int port) {
     int sock, broadcast = 1, opt = 1;
-    char buffer[1024] = {0};
     struct sockaddr_in bc_address;
 
     sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -177,10 +176,6 @@ BroadcastInfo initBroadcastSocket(int port) {
     bc_address.sin_family = AF_INET; 
     bc_address.sin_port = htons(port); 
     bc_address.sin_addr.s_addr = inet_addr("172.30.143.255");
-
-    // snprintf(buffer, BUF_MSG, "%d %d", bc_address.sin_port, bc_address.sin_addr.s_addr, bc_address.sin_family);
-    // logInfo(buffer);
-
 
     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
     BroadcastInfo br_info;
