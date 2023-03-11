@@ -21,12 +21,14 @@ void addQuestion(QuestionArray* arr, Question question);
 void sendWaitingQuestions(int fd, QuestionArray* arr);
 
 int strToInt(const char* str, int* res);
-Question getQuestion(QuestionArray* arr, int id);
+Question* getQuestion(QuestionArray* arr, int id);
 
 void addPort(PortArray* arr, int port);
 int isExistingPort(PortArray* arr, int port);
 int generatePort(PortArray* ports);
 void initBroadcastSocket(BroadcastInfo* br_info, int port);
-void saveQuestion(Question q);
+void saveQuestion(Question* q);
+Question* getQuestionByPort(QuestionArray* arr, int port);
+void sendDiscussingQuestions(int fd, QuestionArray* arr);
 
 #endif

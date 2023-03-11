@@ -56,7 +56,7 @@ ClientType getClientType(int server_fd) {
     }
 }
 
-void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd, ClientType client_type) {
+void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd, ClientType client_type, int id) {
     char cmdBuf[BUF_CLI] = {'\0'};
     char msgBuf[BUF_MSG] = {'\0'};
 
@@ -67,7 +67,10 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
 
     if (br_info->fd != -1) {
         br_info->sending = 1;
-        sendto(br_info->fd, cmdPart, strlen(cmdPart), 0, (struct sockaddr*)&(br_info->addr), sizeof(br_info->addr));
+        if (strncmp(cmdBuf, "$close", 5) || id == br_info->host) {
+            sendto(br_info->fd, cmdPart, strlen(cmdPart), 0, (struct sockaddr*)&(br_info->addr), sizeof(br_info->addr));
+        }
+
         return;
     }
 
@@ -100,7 +103,6 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
         snprintf(msgBuf, BUF_MSG, "$SSN$");
         send(server_fd, msgBuf, strlen(msgBuf), 0);
         // alarm(TIMEOUT);
-        logInfo("Session request sent.");
     }
     else if (!strcmp(cmdPart, "show_questions")) {
         snprintf(msgBuf, BUF_MSG, "$SQN$");
@@ -127,15 +129,12 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
         int port, res;
         res = strToInt(cmdPart, &port);
         if (res == 1 || res == 2) {
-            logError("Invalid question id");
+            logError("Invalid port number");
             return;
         }
 
-        initBroadcastSocket(br_info, port);
-        FD_SET(br_info->fd, master_set);
-
-        if (br_info->fd > *max_sd)
-            *max_sd = br_info->fd;
+        snprintf(msgBuf, BUF_MSG, "$REQ$%d", port);
+        send(server_fd, msgBuf, BUF_MSG, 0);
 
         // alarm(TIMEOUT);
     }
@@ -158,7 +157,7 @@ char* getUntilDollar(char* buffer) {
 }
 
 int main(int argc, char const* argv[]) {
-    int server_fd, new_socket, max_sd;
+    int server_fd, new_socket, max_sd, id;
 
     char buffer[1024] = {0};
     char msgBuf[BUF_MSG] = {'\0'};
@@ -189,7 +188,7 @@ int main(int argc, char const* argv[]) {
                     write(STDOUT_FILENO, "\x1B[2K\r", 5);
                 }
                 if (i == STDIN_FILENO) {
-                    cli(&master_set, &br_info, &max_sd, server_fd, client_type);
+                    cli(&master_set, &br_info, &max_sd, server_fd, client_type, id);
                 }
                 else if (i == server_fd) {
                     int bytes_received;
@@ -206,10 +205,13 @@ int main(int argc, char const* argv[]) {
                     if (!strncmp(buffer, "$PRM$", 5)) {
                         logError("Permission Denied!");
                     }
+                    else if (!strncmp(buffer, "$IDD$", 5)) {
+                        char* id_str = strtok(buffer + 5, "$");
+                        strToInt(id_str, &id);
+                    }
                     else if (!strncmp(buffer, "$PRT$", 5)) {
                         int port, q_id;
 
-                        // char* port_str = getUntilDollar(after_d);
                         char* port_str = strtok(buffer + 5, "$");
                         strToInt(port_str, &port);
                         char* q_id_str = strtok(NULL, "$");
@@ -218,6 +220,20 @@ int main(int argc, char const* argv[]) {
                         br_info.q_id = q_id;
 
                         printf("port %d for question [%d]\n", port, q_id);
+                    }
+                    else if (!strncmp(buffer, "$ACC$", 5)) {
+                        int port;
+
+                        char* port_str = strtok(buffer + 5, "$");
+                        strToInt(port_str, &port);
+                        char* host_str = strtok(NULL, "$");
+                        strToInt(host_str, &br_info.host);
+
+                        initBroadcastSocket(&br_info, port);
+                        FD_SET(br_info.fd, &master_set);
+
+                        if (br_info.fd > max_sd)
+                            max_sd = br_info.fd;
                     }
                     else {
                         printf(buffer);
@@ -228,20 +244,20 @@ int main(int argc, char const* argv[]) {
                     memset(buffer, 0, 1024);
                     bytes_received = recv(i, buffer, 1024, 0);
 
-                    if (
-                        bytes_received == 0 || !strncmp(buffer, "$close", 6)) {
+                    if (!strncmp(buffer, "$close", 6)) {
                         printf("client fd = %d closed\n", i);
                         close(i);
                         FD_CLR(i, &master_set);
                         br_info.fd = -1;
 
-                        getInput(STDIN_FILENO, "Enter Answer of this question:\n", buffer, 1024);
-                        memset(msgBuf, 0, BUF_MSG);
-                        snprintf(msgBuf, 1024, "$CLS$%d$%s", br_info.q_id, buffer);
-                        send(server_fd, msgBuf, BUF_MSG, 0);
-
-                        continue;
+                        if (br_info.host == id) {
+                            getInput(STDIN_FILENO, "Enter Answer of this question:\n", buffer, 1024);
+                            memset(msgBuf, 0, BUF_MSG);
+                            snprintf(msgBuf, BUF_MSG, "$CLS$%d$%s", br_info.q_id, buffer);
+                            send(server_fd, msgBuf, BUF_MSG, 0);
+                        }
                     }
+
                     if (!br_info.sending)
                         logNormal(buffer);
                     else

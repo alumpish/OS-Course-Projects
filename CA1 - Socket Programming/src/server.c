@@ -97,6 +97,8 @@ int main(int argc, char const* argv[]) {
                     if (new_socket > max_sd)
                         max_sd = new_socket;
                     printf("New client connected. fd = %d\n", new_socket);
+                    snprintf(msgBuf, BUF_MSG, "$IDD$%d", new_socket);
+                    send(new_socket, msgBuf, BUF_MSG, 0);
                 }
 
                 else { // client sending msg
@@ -132,10 +134,26 @@ int main(int argc, char const* argv[]) {
                         strToInt(q_id_str, &q_id);
                         char* aMsg = strtok(NULL, "$");
 
-                        Question q = getQuestion(&questions, q_id);
-                        strcpy(q.aMsg, aMsg);
-                        q.type = ANSWERED;
+                        Question* q = getQuestion(&questions, q_id);
+                        strcpy(q->aMsg, aMsg);
+                        q->type = ANSWERED;
                         saveQuestion(q);
+                    }
+                    else if (!strncmp(buffer, "$REQ$", 5)) {
+                        int port;
+                        char* prt_str = strtok(buffer + 5, "$");
+                        strToInt(prt_str, &port);
+                        Question* q = getQuestionByPort(&questions, port);
+                        if (q != NULL) {
+                            snprintf(msgBuf, BUF_MSG, "$ACC$%d$%d", port, q->author);
+                            send(i, msgBuf, strlen(msgBuf), 0);
+                        }
+                        else{
+                            snprintf(msgBuf, BUF_MSG, "$PRM$");
+                            send(i, msgBuf, strlen(msgBuf), 0);
+                        }
+
+
                     }
                     else if (getClientType(clients, i) == STUDENT) {
                         if (!strncmp(buffer, "$ASK$", 5)) {
@@ -148,7 +166,7 @@ int main(int argc, char const* argv[]) {
                             addQuestion(&questions, q);
                         }
                         else if (!strncmp(buffer, "$SSN$", 5)) {
-                            printf("Show Sessions %d: %s\n", i, buffer);
+                            sendDiscussingQuestions(i, &questions);
                         }
                         else {
                             snprintf(msgBuf, BUF_MSG, "$PRM$");
@@ -157,7 +175,6 @@ int main(int argc, char const* argv[]) {
                     }
                     else if (getClientType(clients, i) == TA) {
                         if (!strncmp(buffer, "$SQN$", 5)) {
-                            // logInfo("Show Questions");
                             sendWaitingQuestions(i, &questions);
                         }
                         else if (!strncmp(buffer, "$ANS$", 5)) {
@@ -166,23 +183,20 @@ int main(int argc, char const* argv[]) {
                             res = strToInt(answer, &q_id);
                             if (res == 1 || res == 2) {
                                 logInfo("Invalid question id");
-                                // snprintf(msgBuf, BUF_MSG, "$PRM$");
-                                // send(i, msgBuf, strlen(msgBuf), 0);
                             }
                             else {
-                                Question q = getQuestion(&questions, q_id);
-                                if (q.id == -1) {
+                                Question* q = getQuestion(&questions, q_id);
+                                if (q == NULL) {
                                     logInfo("This question does not exist");
-                                    // snprintf(msgBuf, BUF_MSG, "$PRM$");
-                                    // send(i, msgBuf, strlen(msgBuf), 0);
+
                                 }
                                 else {
-                                    q.type = DISCUSSING;
+                                    q->type = DISCUSSING;
                                     int port = generatePort(&ports);
-                                    q.port = port;
+                                    q->port = port;
 
-                                    snprintf(msgBuf, BUF_MSG, "$PRT$%d$%d", port, q.id);
-                                    send(q.author, msgBuf, strlen(msgBuf), 0);
+                                    snprintf(msgBuf, BUF_MSG, "$PRT$%d$%d", port, q->id);
+                                    send(q->author, msgBuf, strlen(msgBuf), 0);
                                     send(i, msgBuf, strlen(msgBuf), 0);
                                 }
                             }

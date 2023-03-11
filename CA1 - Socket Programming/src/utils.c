@@ -120,15 +120,13 @@ int strToInt(const char* str, int* res) {
     return 0;
 }
 
-Question getQuestion(QuestionArray* arr, int id) {
+Question* getQuestion(QuestionArray* arr, int id) {
     for (int i = 0; i < arr->size; i++) {
         if (arr->ptr[i].id == id) {
-            return arr->ptr[i];
+            return &(arr->ptr[i]);
         }
     }
-    Question q;
-    q.id = -1;
-    return q;
+    return NULL;
 }
 
 // add port to ports array
@@ -180,11 +178,31 @@ void initBroadcastSocket(BroadcastInfo* br_info, int port) {
     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
     br_info->fd = sock;
     br_info->addr = bc_address;
-
 }
 
-void saveQuestion(Question q) {
+void saveQuestion(Question* q) {
     char buffer[1024] = {'\0'};
-    snprintf(buffer, BUF_MSG, "Q%d: %s -> %s\n", q.id, q.qMsg, q.aMsg);
+    snprintf(buffer, BUF_MSG, "Q%d: %s -> %s\n", q->id, q->qMsg, q->aMsg);
     writeToFile("questions", ".txt", buffer);
+}
+
+Question* getQuestionByPort(QuestionArray* arr, int port) {
+    for (int i = 0; i < arr->size; i++) {
+        if (arr->ptr[i].port == port) {
+            return &arr->ptr[i];
+        }
+    }
+    return NULL;
+}
+
+// send DISCUSSING questions in questionArray to client
+void sendDiscussingQuestions(int fd, QuestionArray* arr) {
+    for (int i = 0; i < arr->size; i++) {
+        if (arr->ptr[i].type == DISCUSSING) {
+            char msgBuf[BUF_MSG];
+
+            snprintf(msgBuf, BUF_MSG, "Q%d: %s (Port: %d)\n", arr->ptr[i].id, arr->ptr[i].qMsg, arr->ptr[i].port);
+            write(fd, msgBuf, strlen(msgBuf));
+        }
+    }
 }
