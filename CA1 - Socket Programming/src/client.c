@@ -68,7 +68,8 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
     if (br_info->fd != -1) {
         br_info->sending = 1;
         if (strncmp(cmdBuf, "$close", 5) || id == br_info->host) {
-            sendto(br_info->fd, cmdPart, strlen(cmdPart), 0, (struct sockaddr*)&(br_info->addr), sizeof(br_info->addr));
+            snprintf(msgBuf, BUF_MSG, "%d$%s", id, cmdPart);
+            sendto(br_info->fd, msgBuf, BUF_MSG, 0, (struct sockaddr*)&(br_info->addr), sizeof(br_info->addr));
         }
 
         return;
@@ -258,8 +259,16 @@ int main(int argc, char const* argv[]) {
                         }
                     }
 
-                    if (!br_info.sending)
-                        logNormal(buffer);
+                    if (!br_info.sending) {
+                        int id;
+                        char* id_str = strtok(buffer, "$");
+                        strToInt(id_str, &id);
+                        id_str = strtok(NULL, "$");
+
+                        memset(msgBuf, 0, BUF_MSG);
+                        snprintf(msgBuf, BUF_MSG, "User[%d]: %s", id, id_str);
+                        logNormal(msgBuf);
+                    }
                     else
                         br_info.sending = 0;
                 }
