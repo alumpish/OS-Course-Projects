@@ -28,7 +28,8 @@ int connectServer(int port) {
     server_address.sin_port = htons(port);
 
     if (connect(fd, (struct sockaddr*)&server_address, sizeof(server_address)) < 0) { // checking for errors
-        logError("Error in connecting to server\n");
+        logError("Error in connecting to server");
+        exit(1);
     }
 
     return fd;
@@ -89,12 +90,10 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
         if (my_id == br_info->ta)
             alarm(0);
 
-        else if (strncmp(cmdBuf, "@close", 5) || my_id == br_info->host) {
+        if (strncmp(cmdBuf, "@close", 5) || my_id == br_info->host) {
             snprintf(msgBuf, BUF_MSG, "%d$%s", my_id, cmdBuf);
             sendto(br_info->fd, msgBuf, BUF_MSG, 0, (struct sockaddr*)&(br_info->addr), sizeof(br_info->addr));
         }
-        logInfo(test);
-
         return;
     }
 
@@ -156,7 +155,6 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
 void handleTimeout(int sig) {
     char buffer[1024] = {'\0'};
     snprintf(buffer, 1024, "%d$@tout", my_id);
-    logInfo(buffer);
     sendto(br_info.fd, buffer, 1024, 0, (struct sockaddr*)&(br_info.addr), sizeof(br_info.addr));
     timedOut = 1;
 }
@@ -175,6 +173,11 @@ void timeOut(int br_fd, int server_fd, fd_set* master_set) {
 int main(int argc, char const* argv[]) {
     int server_fd, new_socket, max_sd;
 
+    if (argc != 2) {
+        logError("Usage: ./server <port>");
+        exit(1);
+    }
+
     struct sigaction sigact = {.sa_handler = handleTimeout, .sa_flags = SA_RESTART};
     sigaction(SIGALRM, &sigact, NULL);
 
@@ -185,7 +188,7 @@ int main(int argc, char const* argv[]) {
     br_info.fd = -1;
     br_info.q_id = -1;
 
-    server_fd = connectServer(8080);
+    server_fd = connectServer(atoi(argv[1]));
 
     ClientType client_type = getClientType(server_fd);
     logHelp(client_type);
@@ -254,7 +257,7 @@ int main(int argc, char const* argv[]) {
                         strToInt(ta_str, &br_info.ta);
 
                         initBroadcastSocket(&br_info, port);
-                        logInfo("Connected to session");
+                        logInfo("Connected to session.");
 
                         if (my_id == br_info.ta)
                             alarm(TIMEOUT);
@@ -276,8 +279,6 @@ int main(int argc, char const* argv[]) {
                     char* id_str = strtok(buffer, "$");
                     strToInt(id_str, &id);
                     char* msg = strtok(NULL, "$");
-
-                    logInfo(msg);
 
                     if (!strncmp(msg, "@close", 6)) {
                         close(i);

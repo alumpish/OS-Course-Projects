@@ -66,6 +66,11 @@ int main(int argc, char const* argv[]) {
     char buffer[1024] = {0};
     char msgBuf[BUF_MSG] = {'\0'};
 
+    if (argc != 2) {
+        logError("Usage: ./server <port>");
+        exit(1);
+    }
+
     fd_set master_set, working_set;
 
     ClientArray clients;
@@ -77,7 +82,7 @@ int main(int argc, char const* argv[]) {
     PortArray ports;
     memset(&ports, 0, sizeof(ports));
 
-    server_fd = setupServer(8080);
+    server_fd = setupServer(atoi(argv[1]));
 
     FD_ZERO(&master_set);
     max_sd = server_fd;
