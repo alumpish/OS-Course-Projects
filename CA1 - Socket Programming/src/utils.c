@@ -1,5 +1,6 @@
 #include "utils.h"
 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -8,7 +9,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 
 #include "ansi_colors.h"
 #include "logger.h"
@@ -99,13 +99,18 @@ void addQuestion(QuestionArray* arr, Question question) {
 }
 
 void sendWaitingQuestions(int fd, QuestionArray* arr) {
+    int empty = 1;
     for (int i = 0; i < arr->size; i++) {
         if (arr->ptr[i].type == WAITING) {
             char msgBuf[BUF_MSG];
 
+            empty = 0;
             snprintf(msgBuf, BUF_MSG, "Q%d: %s\n", arr->ptr[i].id, arr->ptr[i].qMsg);
             write(fd, msgBuf, strlen(msgBuf));
         }
+    }
+    if (empty) {
+        write(fd, "No questions waiting.\n", 22);
     }
 }
 
@@ -171,11 +176,11 @@ void initBroadcastSocket(BroadcastInfo* br_info, int port) {
     setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
     setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
 
-    bc_address.sin_family = AF_INET; 
-    bc_address.sin_port = htons(port); 
+    bc_address.sin_family = AF_INET;
+    bc_address.sin_port = htons(port);
     bc_address.sin_addr.s_addr = inet_addr("172.30.143.255");
 
-    bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
+    bind(sock, (struct sockaddr*)&bc_address, sizeof(bc_address));
     br_info->fd = sock;
     br_info->addr = bc_address;
 }
@@ -195,14 +200,18 @@ Question* getQuestionByPort(QuestionArray* arr, int port) {
     return NULL;
 }
 
-// send DISCUSSING questions in questionArray to client
 void sendDiscussingQuestions(int fd, QuestionArray* arr) {
+    int empty = 1;
+
     for (int i = 0; i < arr->size; i++) {
         if (arr->ptr[i].type == DISCUSSING) {
             char msgBuf[BUF_MSG];
-
+            empty = 0;
             snprintf(msgBuf, BUF_MSG, "Q%d: %s (Port: %d)\n", arr->ptr[i].id, arr->ptr[i].qMsg, arr->ptr[i].port);
             write(fd, msgBuf, strlen(msgBuf));
         }
+    }
+    if (empty) {
+        write(fd, "No questions discussing.\n", 25);
     }
 }

@@ -9,7 +9,7 @@
 #define BUF_CLI   128
 #define BUF_MSG   512
 #define BCAST_IP  "192.168.1.255"
-#define TIMEOUT   60
+#define TIMEOUT   5
 
 typedef enum {
     STUDENT = 0,
@@ -35,12 +35,14 @@ typedef struct
     int sending;
     int q_id;
     int host;
+    int ta;
 } BroadcastInfo;
 
 typedef struct
 {
     int id;
     int author;
+    int ta;
     QuestionType type;
     char qMsg[BUF_MSG];
     char aMsg[BUF_MSG];

@@ -145,12 +145,27 @@ int main(int argc, char const* argv[]) {
                         strToInt(prt_str, &port);
                         Question* q = getQuestionByPort(&questions, port);
                         if (q != NULL && q->type == DISCUSSING) {
-                            snprintf(msgBuf, BUF_MSG, "$ACC$%d$%d", port, q->author);
+                            snprintf(msgBuf, BUF_MSG, "$ACC$%d$%d$%d", port, q->author, q->ta);
                             send(i, msgBuf, strlen(msgBuf), 0);
                         }
                         else {
                             snprintf(msgBuf, BUF_MSG, "$PRM$");
                             send(i, msgBuf, strlen(msgBuf), 0);
+                        }
+                    }
+                    else if (!strncmp(buffer, "$SUS$", 5)) {
+                        logInfo(buffer);
+                        int q_id;
+                        char* q_str = strtok(buffer + 5, "$");
+                        strToInt(q_str, &q_id);
+                        logInfo(q_str);
+                        Question* q = getQuestion(&questions, q_id);
+                        if (q != NULL) {
+                            q->type = WAITING;
+                            q->ta = -1;
+                        }
+                        else {
+                            logError("Question not found");
                         }
                     }
                     else if (getClientType(clients, i) == STUDENT) {
@@ -191,6 +206,7 @@ int main(int argc, char const* argv[]) {
                                     q->type = DISCUSSING;
                                     int port = generatePort(&ports);
                                     q->port = port;
+                                    q->ta = i;
 
                                     snprintf(msgBuf, BUF_MSG, "$PRT$%d$%d", port, q->id);
                                     send(q->author, msgBuf, strlen(msgBuf), 0);

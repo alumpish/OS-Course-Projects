@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +12,10 @@
 #include "logger.h"
 #include "types.h"
 #include "utils.h"
+
+int my_id;
+int timedOut = 0;
+BroadcastInfo br_info;
 
 int connectServer(int port) {
     int fd;
@@ -71,18 +76,25 @@ void logHelp(ClientType client_type) {
             " - connect <port>: connect to a student.");
 }
 
-void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd, ClientType client_type, int id) {
+void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd, ClientType client_type) {
     char cmdBuf[BUF_CLI] = {'\0'};
     char msgBuf[BUF_MSG] = {'\0'};
 
     getInput(STDIN_FILENO, NULL, cmdBuf, BUF_CLI);
+    char test[BUF_MSG] = {'\0'};
 
     if (br_info->fd != -1) {
         br_info->sending = 1;
-        if (strncmp(cmdBuf, "@close", 5) || id == br_info->host) {
-            snprintf(msgBuf, BUF_MSG, "%d$%s", id, cmdBuf);
+
+        if (my_id == br_info->ta)
+            alarm(0);
+
+        else if (strncmp(cmdBuf, "@close", 5) || my_id == br_info->host) {
+            snprintf(msgBuf, BUF_MSG, "%d$%s", my_id, cmdBuf);
             sendto(br_info->fd, msgBuf, BUF_MSG, 0, (struct sockaddr*)&(br_info->addr), sizeof(br_info->addr));
         }
+        logInfo(test);
+
         return;
     }
 
@@ -99,20 +111,16 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
             logError("No question provided");
             return;
         }
-
         snprintf(msgBuf, BUF_MSG, "$ASK$%s", cmdPart);
         send(server_fd, msgBuf, strlen(msgBuf), 0);
-        // alarm(TIMEOUT);
     }
     else if (!strcmp(cmdPart, "show_sessions")) {
         snprintf(msgBuf, BUF_MSG, "$SSN$");
         send(server_fd, msgBuf, strlen(msgBuf), 0);
-        // alarm(TIMEOUT);
     }
     else if (!strcmp(cmdPart, "show_questions")) {
         snprintf(msgBuf, BUF_MSG, "$SQN$");
         send(server_fd, msgBuf, strlen(msgBuf), 0);
-        // alarm(TIMEOUT);
     }
     else if (!strcmp(cmdPart, "answer")) {
         char* cmdPart = strtok(NULL, " ");
@@ -123,7 +131,6 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
 
         snprintf(msgBuf, BUF_MSG, "$ANS$%s", cmdPart);
         send(server_fd, msgBuf, strlen(msgBuf), 0);
-        // alarm(TIMEOUT);
     }
     else if (!strcmp(cmdPart, "connect")) {
         char* cmdPart = strtok(NULL, " ");
@@ -140,34 +147,41 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
 
         snprintf(msgBuf, BUF_MSG, "$REQ$%d", port);
         send(server_fd, msgBuf, BUF_MSG, 0);
-
-        // alarm(TIMEOUT);
     }
     else {
         logError("Invalid command.");
     }
 }
 
-// function that ger buffer and return  until fisrt $ or end of buffer
-char* getUntilDollar(char* buffer) {
-    char* temp = malloc(sizeof(char) * 1024);
-    int i = 0;
-    while (buffer[i] != '$' && buffer[i] != '\0') {
-        temp[i] = buffer[i];
-        i++;
-    }
-    temp[i] = '\0';
+void handleTimeout(int sig) {
+    char buffer[1024] = {'\0'};
+    snprintf(buffer, 1024, "%d$@tout", my_id);
+    logInfo(buffer);
+    sendto(br_info.fd, buffer, 1024, 0, (struct sockaddr*)&(br_info.addr), sizeof(br_info.addr));
+    timedOut = 1;
+}
 
-    return temp;
+void timeOut(int br_fd, int server_fd, fd_set* master_set) {
+    char buffer[1024] = {'\0'};
+    snprintf(buffer, 1024, "$SUS$%d$", br_info.q_id);
+    sendto(server_fd, buffer, 1024, 0, (struct sockaddr*)&(br_info.addr), sizeof(br_info.addr));
+    printf("client fd = %d closed\n", br_fd);
+    close(br_fd);
+    FD_CLR(br_fd, master_set);
+    br_info.fd = -1;
+    logWarning("Timeout (1min): Disconnected from discussion.");
+    timedOut = 0;
 }
 
 int main(int argc, char const* argv[]) {
-    int server_fd, new_socket, max_sd, my_id;
+    int server_fd, new_socket, max_sd;
+
+    struct sigaction sigact = {.sa_handler = handleTimeout, .sa_flags = SA_RESTART};
+    sigaction(SIGALRM, &sigact, NULL);
 
     char buffer[1024] = {0};
     char msgBuf[BUF_MSG] = {'\0'};
 
-    BroadcastInfo br_info;
     memset(&br_info, 0, sizeof(br_info));
     br_info.fd = -1;
     br_info.q_id = -1;
@@ -187,14 +201,16 @@ int main(int argc, char const* argv[]) {
     while (1) {
         working_set = master_set;
         select(max_sd + 1, &working_set, NULL, NULL, NULL);
-
         for (int i = 0; i <= max_sd; i++) {
+            if (timedOut) {
+                timeOut(br_info.fd, server_fd, &master_set);
+            }
             if (FD_ISSET(i, &working_set)) {
                 if (i != STDIN_FILENO) {
                     write(STDOUT_FILENO, "\x1B[2K\r", 5);
                 }
                 if (i == STDIN_FILENO) {
-                    cli(&master_set, &br_info, &max_sd, server_fd, client_type, my_id);
+                    cli(&master_set, &br_info, &max_sd, server_fd, client_type);
                 }
                 else if (i == server_fd) {
                     int bytes_received;
@@ -234,9 +250,15 @@ int main(int argc, char const* argv[]) {
                         strToInt(port_str, &port);
                         char* host_str = strtok(NULL, "$");
                         strToInt(host_str, &br_info.host);
+                        char* ta_str = strtok(NULL, "$");
+                        strToInt(ta_str, &br_info.ta);
 
                         initBroadcastSocket(&br_info, port);
                         logInfo("Connected to session");
+
+                        if (my_id == br_info.ta)
+                            alarm(TIMEOUT);
+
                         FD_SET(br_info.fd, &master_set);
 
                         if (br_info.fd > max_sd)
@@ -255,6 +277,8 @@ int main(int argc, char const* argv[]) {
                     strToInt(id_str, &id);
                     char* msg = strtok(NULL, "$");
 
+                    logInfo(msg);
+
                     if (!strncmp(msg, "@close", 6)) {
                         printf("client fd = %d closed\n", i);
                         close(i);
@@ -272,8 +296,11 @@ int main(int argc, char const* argv[]) {
                             logInfo("A & Q saved to the file.");
                         }
                     }
+                    else if (!strncmp(msg, "@tout", 6)) {
+                        timeOut(i, server_fd, &master_set);
+                    }
 
-                    if (!br_info.sending) {
+                    else if (!br_info.sending) {
                         memset(msgBuf, 0, BUF_MSG);
                         snprintf(msgBuf, BUF_MSG, "User[%d]: %s", id, msg);
                         logNormal(msgBuf);
