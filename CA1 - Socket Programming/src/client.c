@@ -28,7 +28,7 @@ int connectServer(int port) {
     server_address.sin_port = htons(port);
 
     if (connect(fd, (struct sockaddr*)&server_address, sizeof(server_address)) < 0) { // checking for errors
-        printf("Error in connecting to server\n");
+        logError("Error in connecting to server\n");
     }
 
     return fd;
@@ -165,7 +165,6 @@ void timeOut(int br_fd, int server_fd, fd_set* master_set) {
     char buffer[1024] = {'\0'};
     snprintf(buffer, 1024, "$SUS$%d$", br_info.q_id);
     sendto(server_fd, buffer, 1024, 0, (struct sockaddr*)&(br_info.addr), sizeof(br_info.addr));
-    printf("client fd = %d closed\n", br_fd);
     close(br_fd);
     FD_CLR(br_fd, master_set);
     br_info.fd = -1;
@@ -218,7 +217,8 @@ int main(int argc, char const* argv[]) {
                     bytes_received = recv(i, buffer, 1024, 0);
 
                     if (bytes_received == 0) { // EOF
-                        printf("client fd = %d closed\n", i);
+                        snprintf(buffer, 1024, "client fd = %d closed", i);
+                        logInfo(buffer);
                         close(i);
                         FD_CLR(i, &master_set);
                         continue;
@@ -240,8 +240,8 @@ int main(int argc, char const* argv[]) {
                         strToInt(q_id_str, &q_id);
 
                         br_info.q_id = q_id;
-
-                        printf("port %d for question [%d]\n", port, q_id);
+                        snprintf(buffer, 1024, "port %d for question [%d]", port, q_id);
+                        logNormal(buffer);
                     }
                     else if (!strncmp(buffer, "$ACC$", 5)) {
                         int port;
@@ -265,7 +265,7 @@ int main(int argc, char const* argv[]) {
                             max_sd = br_info.fd;
                     }
                     else {
-                        printf(buffer);
+                        logNormal(buffer);
                     }
                 }
                 else if (i == br_info.fd) {
@@ -280,7 +280,6 @@ int main(int argc, char const* argv[]) {
                     logInfo(msg);
 
                     if (!strncmp(msg, "@close", 6)) {
-                        printf("client fd = %d closed\n", i);
                         close(i);
                         FD_CLR(i, &master_set);
                         br_info.fd = -1;

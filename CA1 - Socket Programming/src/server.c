@@ -96,18 +96,19 @@ int main(int argc, char const* argv[]) {
                     FD_SET(new_socket, &master_set);
                     if (new_socket > max_sd)
                         max_sd = new_socket;
-                    printf("New client connected. fd = %d\n", new_socket);
+                    snprintf(buffer, 1024, "New client connected. fd = %d", new_socket);
+                    logInfo(buffer);
                     snprintf(msgBuf, BUF_MSG, "$IDD$%d", new_socket);
                     send(new_socket, msgBuf, BUF_MSG, 0);
                 }
-
                 else { // client sending msg
                     int bytes_received;
                     memset(buffer, 0, 1024);
                     bytes_received = recv(i, buffer, 1024, 0);
 
                     if (bytes_received == 0) { // EOF
-                        printf("client fd = %d closed\n", i);
+                        snprintf(buffer, 1024, "client fd = %d closed", i);
+                        logInfo(buffer);
                         close(i);
                         FD_CLR(i, &master_set);
                         removeClient(&clients, i);
@@ -115,14 +116,12 @@ int main(int argc, char const* argv[]) {
                     }
 
                     if (!strncmp(buffer, "$STU$", 5)) {
-                        printf("client %d: %s\n", i, buffer);
                         Client client;
                         client.id = i;
                         client.type = STUDENT;
                         addClient(&clients, client);
                     }
                     else if (!strncmp(buffer, "$TAA$", 5)) {
-                        printf("client %d: %s\n", i, buffer);
                         Client client;
                         client.id = i;
                         client.type = TA;
