@@ -43,4 +43,4 @@ $(OBJ_DIR):
 .PHONY: all clean
 
 clean:
-	rm -f $(OBJ_DIR)/*.o $(BUILD_DIR)/*.exe
+	rm -f $(OBJ_DIR)/*.o ./*.out
