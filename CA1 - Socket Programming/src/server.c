@@ -144,16 +144,14 @@ int main(int argc, char const* argv[]) {
                         char* prt_str = strtok(buffer + 5, "$");
                         strToInt(prt_str, &port);
                         Question* q = getQuestionByPort(&questions, port);
-                        if (q != NULL) {
+                        if (q != NULL && q->type == DISCUSSING) {
                             snprintf(msgBuf, BUF_MSG, "$ACC$%d$%d", port, q->author);
                             send(i, msgBuf, strlen(msgBuf), 0);
                         }
-                        else{
+                        else {
                             snprintf(msgBuf, BUF_MSG, "$PRM$");
                             send(i, msgBuf, strlen(msgBuf), 0);
                         }
-
-
                     }
                     else if (getClientType(clients, i) == STUDENT) {
                         if (!strncmp(buffer, "$ASK$", 5)) {
@@ -182,13 +180,12 @@ int main(int argc, char const* argv[]) {
                             char* answer = buffer + 5;
                             res = strToInt(answer, &q_id);
                             if (res == 1 || res == 2) {
-                                logInfo("Invalid question id");
+                                send(i, "$PRM$", 5, 0);
                             }
                             else {
                                 Question* q = getQuestion(&questions, q_id);
-                                if (q == NULL) {
-                                    logInfo("This question does not exist");
-
+                                if (q == NULL || q->type != WAITING) {
+                                    send(i, "$PRM$", 5, 0);
                                 }
                                 else {
                                     q->type = DISCUSSING;

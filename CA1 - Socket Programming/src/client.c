@@ -56,6 +56,21 @@ ClientType getClientType(int server_fd) {
     }
 }
 
+void logHelp(ClientType client_type) {
+    if (client_type == STUDENT)
+        logNormal(
+            "Available commands:\n"
+            " - ask <question>: send a question to server.\n"
+            " - show_sessions: show progressing sessions\n"
+            " - connect <port>: connect to a TA.");
+    else if (client_type == TA)
+        logNormal(
+            "Available commands:\n"
+            " - show_questions: show list of all available questions.\n"
+            " - answer <question_id>: choose a question to discuss about it.\n"
+            " - connect <port>: connect to a student.");
+}
+
 void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd, ClientType client_type, int id) {
     char cmdBuf[BUF_CLI] = {'\0'};
     char msgBuf[BUF_MSG] = {'\0'};
@@ -67,7 +82,7 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
 
     if (br_info->fd != -1) {
         br_info->sending = 1;
-        if (strncmp(cmdBuf, "$close", 5) || id == br_info->host) {
+        if (strncmp(cmdBuf, "@close", 5) || id == br_info->host) {
             snprintf(msgBuf, BUF_MSG, "%d$%s", id, cmdPart);
             sendto(br_info->fd, msgBuf, BUF_MSG, 0, (struct sockaddr*)&(br_info->addr), sizeof(br_info->addr));
         }
@@ -76,18 +91,7 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
     }
 
     if (!strcmp(cmdPart, "help")) {
-        if (client_type == STUDENT)
-            logNormal(
-                "Available commands:\n"
-                " - ask <question>: send a question to server.\n"
-                " - show_sessions: show progressing sessions\n"
-                " - connect <port>: connect to a TA.");
-        else if (client_type == TA)
-            logNormal(
-                "Available commands:\n"
-                " - show_questions: show list of all available questions.\n"
-                " - answer <question_id>: choose a question to discuss about it.\n"
-                " - connect <port>: connect to a student.");
+        logHelp(client_type);
     }
     else if (!strcmp(cmdPart, "ask")) {
         char* cmdPart = strtok(NULL, " ");
@@ -158,7 +162,7 @@ char* getUntilDollar(char* buffer) {
 }
 
 int main(int argc, char const* argv[]) {
-    int server_fd, new_socket, max_sd, id;
+    int server_fd, new_socket, max_sd, my_id;
 
     char buffer[1024] = {0};
     char msgBuf[BUF_MSG] = {'\0'};
@@ -171,6 +175,7 @@ int main(int argc, char const* argv[]) {
     server_fd = connectServer(8080);
 
     ClientType client_type = getClientType(server_fd);
+    logHelp(client_type);
 
     fd_set master_set, working_set;
 
@@ -189,7 +194,7 @@ int main(int argc, char const* argv[]) {
                     write(STDOUT_FILENO, "\x1B[2K\r", 5);
                 }
                 if (i == STDIN_FILENO) {
-                    cli(&master_set, &br_info, &max_sd, server_fd, client_type, id);
+                    cli(&master_set, &br_info, &max_sd, server_fd, client_type, my_id);
                 }
                 else if (i == server_fd) {
                     int bytes_received;
@@ -208,7 +213,7 @@ int main(int argc, char const* argv[]) {
                     }
                     else if (!strncmp(buffer, "$IDD$", 5)) {
                         char* id_str = strtok(buffer + 5, "$");
-                        strToInt(id_str, &id);
+                        strToInt(id_str, &my_id);
                     }
                     else if (!strncmp(buffer, "$PRT$", 5)) {
                         int port, q_id;
@@ -231,6 +236,7 @@ int main(int argc, char const* argv[]) {
                         strToInt(host_str, &br_info.host);
 
                         initBroadcastSocket(&br_info, port);
+                        logInfo("Connected to session");
                         FD_SET(br_info.fd, &master_set);
 
                         if (br_info.fd > max_sd)
@@ -241,32 +247,35 @@ int main(int argc, char const* argv[]) {
                     }
                 }
                 else if (i == br_info.fd) {
-                    int bytes_received;
+                    int bytes_received, id;
                     memset(buffer, 0, 1024);
                     bytes_received = recv(i, buffer, 1024, 0);
 
-                    if (!strncmp(buffer, "$close", 6)) {
+                    char* id_str = strtok(buffer, "$");
+                    strToInt(id_str, &id);
+                    char* msg = strtok(NULL, "$");
+
+                    if (!strncmp(msg, "@close", 6)) {
                         printf("client fd = %d closed\n", i);
                         close(i);
                         FD_CLR(i, &master_set);
                         br_info.fd = -1;
+                        logInfo("Disconnected from session");
 
-                        if (br_info.host == id) {
+                        char test[1024];
+
+                        if (br_info.host == my_id) {
                             getInput(STDIN_FILENO, "Enter Answer of this question:\n", buffer, 1024);
                             memset(msgBuf, 0, BUF_MSG);
                             snprintf(msgBuf, BUF_MSG, "$CLS$%d$%s", br_info.q_id, buffer);
                             send(server_fd, msgBuf, BUF_MSG, 0);
+                            logInfo("A & Q saved to the file.");
                         }
                     }
 
                     if (!br_info.sending) {
-                        int id;
-                        char* id_str = strtok(buffer, "$");
-                        strToInt(id_str, &id);
-                        id_str = strtok(NULL, "$");
-
                         memset(msgBuf, 0, BUF_MSG);
-                        snprintf(msgBuf, BUF_MSG, "User[%d]: %s", id, id_str);
+                        snprintf(msgBuf, BUF_MSG, "User[%d]: %s", id, msg);
                         logNormal(msgBuf);
                     }
                     else
