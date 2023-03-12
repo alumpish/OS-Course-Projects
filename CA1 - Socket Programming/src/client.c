@@ -76,25 +76,25 @@ void cli(fd_set* master_set, BroadcastInfo* br_info, int* max_sd, int server_fd,
     char msgBuf[BUF_MSG] = {'\0'};
 
     getInput(STDIN_FILENO, NULL, cmdBuf, BUF_CLI);
-    char* cmdPart = strtok(cmdBuf, " ");
-    if (cmdPart == NULL)
-        return;
 
     if (br_info->fd != -1) {
         br_info->sending = 1;
         if (strncmp(cmdBuf, "@close", 5) || id == br_info->host) {
-            snprintf(msgBuf, BUF_MSG, "%d$%s", id, cmdPart);
+            snprintf(msgBuf, BUF_MSG, "%d$%s", id, cmdBuf);
             sendto(br_info->fd, msgBuf, BUF_MSG, 0, (struct sockaddr*)&(br_info->addr), sizeof(br_info->addr));
         }
-
         return;
     }
+
+    char* cmdPart = strtok(cmdBuf, " ");
+    if (cmdPart == NULL)
+        return;
 
     if (!strcmp(cmdPart, "help")) {
         logHelp(client_type);
     }
     else if (!strcmp(cmdPart, "ask")) {
-        char* cmdPart = strtok(NULL, " ");
+        char* cmdPart = strtok(NULL, "");
         if (cmdPart == NULL) {
             logError("No question provided");
             return;
