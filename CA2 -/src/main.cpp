@@ -43,7 +43,7 @@ int main(int argc, const char *argv[])
     std::vector<fs::path> folders;
     fs::path pos_file;
 
-    if (get_directory_data(argv[1], folders, pos_file))
+    if (get_directory_folders(argv[1], folders, pos_file))
         return EXIT_FAILURE;
 
     // fs::path genresPath;
