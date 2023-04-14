@@ -11,17 +11,17 @@
 
 #include "logger.hpp"
 
-// using namespace std::string_literals;
+using namespace std::string_literals;
 namespace fs = std::filesystem;
 
 Logger lg("main");
 
-int get_directory(std::string path, std::vector<std::string>& files) {
-    if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
-        std::filesystem::path directory_path = path;
-        for (const auto& entry : std::filesystem::directory_iterator(directory_path)) {
-            if (entry.is_regular_file()) {
-                files.push_back(entry.path().filename());
+int get_directory_folders(std::string path, std::vector<fs::path>& folders) {
+    if (fs::exists(path) && fs::is_directory(path)) {
+        fs::path directory_path = path;
+        for (const auto& entry : fs::directory_iterator(directory_path)) {
+            if (entry.is_directory()) {
+                folders.push_back(entry.path());
             }
         }
     }
@@ -30,4 +30,32 @@ int get_directory(std::string path, std::vector<std::string>& files) {
         return 1;
     }
     return 0;
+}
+
+int main(int argc, const char *argv[])
+{
+    if (argc != 2)
+    {
+        std::cerr << "usage: " << "ClubsAgeStats.out" << " <clubs folder>\n";
+        return EXIT_FAILURE;
+    }
+
+    std::vector<fs::path> folders;
+    fs::path pos_file;
+
+    if (get_directory_data(argv[1], folders, pos_file))
+        return EXIT_FAILURE;
+
+    // fs::path genresPath;
+    // if (getRequiredFiles(files, genresPath))
+    //     return EXIT_FAILURE;
+
+    // std::vector<std::string> genres;
+    // if (readGenres(genresPath, genres))
+    //     return EXIT_FAILURE;
+
+    // if (workers(files, genres))
+    //     return EXIT_FAILURE;
+
+    return EXIT_SUCCESS;
 }
