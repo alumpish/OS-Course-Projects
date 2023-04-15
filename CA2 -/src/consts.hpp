@@ -1,18 +1,20 @@
-#ifndef CONSTS_HPP_INCLUDE
+#ifndef CONSTS_HPP
 #define CONSTS_HPP_INCLUDE
 
 namespace consts {
 
-constexpr char programName[] = "GenreCounter";
+const int BUFF_SIZE = 1024;
 
-constexpr char fileGenres[] = "genres.csv";
-constexpr char filePattern[] = "part(\\d+).csv";
+constexpr char PROG_NAME[] = "ClubsAgeStats";
 
-constexpr char exeMap[] = "map.out";
-constexpr char exeReduce[] = "reduce.out";
+constexpr char EXE_COUNTRY[] = "country.out";
+constexpr char EXE_CLUB[] = "club.out";
+constexpr char EXE_POS[] = "position.out";
 
-constexpr char pipesPath[] = "namedpipes";
+constexpr char POS_PATH[] = "clubs/positions.csv";
+constexpr char PIPES_PATH[] = "namedpipes";
+constexpr char CLUBS_PATH[] = "clubs";
 
 } // namespace consts
 
-#endif // CONSTS_HPP_INCLUDE
+#endif

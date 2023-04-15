@@ -1,5 +1,5 @@
-#ifndef LOGGER_HPP_INCLUDE
-#define LOGGER_HPP_INCLUDE
+#ifndef LOGGER_HPP
+#define LOGGER_HPP
 
 #include <string>
 
@@ -16,4 +16,4 @@ private:
     std::string program_;
 };
 
-#endif // LOGGER_HPP_INCLUDE
+#endif

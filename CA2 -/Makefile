@@ -13,15 +13,15 @@ OUT_POS = position.out
 VPATH = $(SRC_DIR)
 
 
-all: $(OUT_CAS) $(OUT_COUNTRY) $(OUT_CLUB) $(OUT_POS)
+all: $(OUT_CAS) $(OUT_COUNTRY) $(OUT_CLUB)
 
-$(OUT_CAS): $(OBJ_DIR)/ClubsAgeStats.o
+$(OUT_CAS): $(OBJ_DIR)/ClubsAgeStats.o $(OBJ_DIR)/logger.o $(OBJ_DIR)/csv.o $(OBJ_DIR)/strutils.o
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-$(OUT_COUNTRY): $(OBJ_DIR)/country.o
+$(OUT_COUNTRY): $(OBJ_DIR)/country.o $(OBJ_DIR)/logger.o $(OBJ_DIR)/strutils.o
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-$(OUT_CLUB): $(OBJ_DIR)/club.o
+$(OUT_CLUB): $(OBJ_DIR)/club.o $(OBJ_DIR)/logger.o $(OBJ_DIR)/csv.o $(OBJ_DIR)/strutils.o
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 $(OUT_POS): $(OBJ_DIR)/position.o
@@ -29,22 +29,27 @@ $(OUT_POS): $(OBJ_DIR)/position.o
 
 
 
-$(OBJ_DIR)/ClubsAgeStats.o: $(SRC_DIR)/main.c
+$(OBJ_DIR)/ClubsAgeStats.o: $(SRC_DIR)/main.cpp $(SRC_DIR)/logger.hpp $(SRC_DIR)/colorprint.hpp $(SRC_DIR)/csv.hpp \
+							$(SRC_DIR)/consts.hpp $(SRC_DIR)/strutils.hpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/country.o: $(SRC_DIR)/country.c
+$(OBJ_DIR)/country.o: $(SRC_DIR)/country.cpp $(SRC_DIR)/logger.hpp $(SRC_DIR)/colorprint.hpp $(SRC_DIR)/strutils.hpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/club.o: $(SRC_DIR)/club.c
+$(OBJ_DIR)/club.o: $(SRC_DIR)/club.cpp $(SRC_DIR)/logger.hpp $(SRC_DIR)/colorprint.hpp $(SRC_DIR)/csv.hpp \
+					$(SRC_DIR)/consts.hpp $(SRC_DIR)/strutils.hpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/position.o: $(SRC_DIR)/position.c
+$(OBJ_DIR)/position.o: $(SRC_DIR)/position.cpp $(SRC_DIR)/logger.hpp $(SRC_DIR)/colorprint.hpp $(SRC_DIR)/csv.hpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/logger.o: $(SRC_DIR)/logger.c
+$(OBJ_DIR)/logger.o: $(SRC_DIR)/logger.cpp $(SRC_DIR)/logger.hpp $(SRC_DIR)/colorprint.hpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/csv.o: $(SRC_DIR)/csv.c
+$(OBJ_DIR)/csv.o: $(SRC_DIR)/csv.cpp $(SRC_DIR)/csv.hpp $(SRC_DIR)/strutils.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/strutils.o: $(SRC_DIR)/strutils.cpp $(SRC_DIR)/strutils.hpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 

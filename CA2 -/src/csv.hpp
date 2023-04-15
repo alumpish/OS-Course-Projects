@@ -1,5 +1,5 @@
-#ifndef CSV_HPP_INCLUDE
-#define CSV_HPP_INCLUDE
+#ifndef CSV_HPP
+#define CSV_HPP
 
 #include <string>
 #include <vector>
@@ -18,4 +18,4 @@ private:
     std::string filename_;
 };
 
-#endif // CSV_HPP_INCLUDE
+#endif
