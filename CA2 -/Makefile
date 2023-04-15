@@ -13,7 +13,7 @@ OUT_POS = position.out
 VPATH = $(SRC_DIR)
 
 
-all: $(OUT_CAS) $(OUT_COUNTRY) $(OUT_CLUB)
+all: $(OUT_CAS) $(OUT_COUNTRY) $(OUT_CLUB) $(OUT_POS)
 
 $(OUT_CAS): $(OBJ_DIR)/ClubsAgeStats.o $(OBJ_DIR)/logger.o $(OBJ_DIR)/csv.o $(OBJ_DIR)/strutils.o
 	$(CXX) $(CXXFLAGS) $^ -o $@
@@ -24,7 +24,7 @@ $(OUT_COUNTRY): $(OBJ_DIR)/country.o $(OBJ_DIR)/logger.o $(OBJ_DIR)/strutils.o
 $(OUT_CLUB): $(OBJ_DIR)/club.o $(OBJ_DIR)/logger.o $(OBJ_DIR)/csv.o $(OBJ_DIR)/strutils.o
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-$(OUT_POS): $(OBJ_DIR)/position.o
+$(OUT_POS): $(OBJ_DIR)/position.o $(OBJ_DIR)/logger.o $(OBJ_DIR)/csv.o $(OBJ_DIR)/strutils.o
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 
@@ -40,7 +40,8 @@ $(OBJ_DIR)/club.o: $(SRC_DIR)/club.cpp $(SRC_DIR)/logger.hpp $(SRC_DIR)/colorpri
 					$(SRC_DIR)/consts.hpp $(SRC_DIR)/strutils.hpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/position.o: $(SRC_DIR)/position.cpp $(SRC_DIR)/logger.hpp $(SRC_DIR)/colorprint.hpp $(SRC_DIR)/csv.hpp
+$(OBJ_DIR)/position.o: $(SRC_DIR)/position.cpp $(SRC_DIR)/logger.hpp $(SRC_DIR)/colorprint.hpp $(SRC_DIR)/csv.hpp \
+						$(SRC_DIR)/consts.hpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/logger.o: $(SRC_DIR)/logger.cpp $(SRC_DIR)/logger.hpp $(SRC_DIR)/colorprint.hpp

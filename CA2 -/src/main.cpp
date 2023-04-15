@@ -88,6 +88,16 @@ int main(int argc, const char* argv[]) {
     std::vector<std::string> pos_list, pos_wanted;
     std::vector<fs::path> countries;
 
+    if (fs::exists(consts::PIPES_PATH)) {
+        fs::remove_all(consts::PIPES_PATH);
+    }
+
+    if (mkdir(consts::PIPES_PATH, 0777) == -1) {
+        lg.error("Could not create pipes directory");
+        return EXIT_FAILURE;
+    }
+
+
     if (createPosList(pos_list, consts::POS_PATH))
         return EXIT_FAILURE;
 
@@ -104,6 +114,7 @@ int main(int argc, const char* argv[]) {
             return EXIT_FAILURE;
         }
     }
+
 
     for (int i = 0; i < countries.size(); i++) {
         int pid = fork();
@@ -128,6 +139,37 @@ int main(int argc, const char* argv[]) {
             write(country_pipes[i][1], msg.c_str(), msg.size());
             close(country_pipes[i][1]);
         }
+    }
+
+    sleep(1.5);
+
+    // create process for each position
+    for (int i = 0; i < pos_wanted.size(); i++) {
+        int pid = fork();
+
+        if (pid < 0) {
+            lg.error("Could not create child process for position: "s + pos_wanted[i]);
+        }
+        else if (pid == 0) { // Child process
+            char argv[256];
+            sprintf(argv, "%s", pos_wanted[i].c_str());
+            if (execl(consts::EXE_POS, consts::EXE_POS, argv, NULL) == -1) {
+                lg.error("Could not execute "s + argv[0]);
+                return 1;
+            }
+        }
+
+        sleep(2);
+    }
+
+    for (int i = 0; i < countries.size(); i++) {
+        int status;
+        wait(&status);
+    }
+
+    for (int i = 0; i < pos_wanted.size(); i++) {
+        int status;
+        wait(&status);
     }
 
     return EXIT_SUCCESS;

@@ -9,14 +9,14 @@
 #include <string>
 #include <vector>
 
-#include "logger.hpp"
 #include "consts.hpp"
+#include "logger.hpp"
 #include "strutils.hpp"
 
 using namespace std::string_literals;
 namespace fs = std::filesystem;
 
-Logger lg("reduce");
+Logger lg("country");
 
 int get_directory_files(std::string path, std::vector<fs::path>& files) {
     if (fs::exists(path) && fs::is_directory(path)) {
@@ -35,12 +35,12 @@ int get_directory_files(std::string path, std::vector<fs::path>& files) {
 }
 
 int main(int argc, const char* argv[]) {
-    std::vector<fs::path> clubs;
-
     if (argc != 4) {
         lg.error("Wrong number of arguments");
         return 1;
     }
+
+    std::vector<fs::path> clubs;
 
     int fd0 = atoi(argv[2]);
     int fd1 = atoi(argv[3]);
@@ -53,11 +53,10 @@ int main(int argc, const char* argv[]) {
         lg.error("Can't read from pipe");
         return 1;
     }
-    
+
     if (get_directory_files(argv[1], clubs))
         return EXIT_FAILURE;
 
-    
     int club_pipes[clubs.size()][2];
     for (int i = 0; i < clubs.size(); i++) {
         if (pipe(club_pipes[i]) == -1) {
@@ -88,6 +87,11 @@ int main(int argc, const char* argv[]) {
             write(club_pipes[i][1], buffer, consts::BUFF_SIZE);
             close(club_pipes[i][1]);
         }
+    }
+
+    for (int i = 0; i < clubs.size(); i++) {
+        int status;
+        wait(&status);
     }
 
     return EXIT_SUCCESS;
