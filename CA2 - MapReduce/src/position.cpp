@@ -70,7 +70,6 @@ int main(int argc, const char* argv[]) {
     std::cout << argv[1] << " max age: " << *std::max_element(ages.begin(), ages.end()) << std::endl;
     std::cout << argv[1] << " avg age: " << std::setprecision(1) << std::fixed << avgAge(ages) << std::endl;
     std::cout << argv[1] << " count: " << ages.size() << std::endl;
-    std::cout << "--------" << std::endl;
 
     return EXIT_SUCCESS;
 }

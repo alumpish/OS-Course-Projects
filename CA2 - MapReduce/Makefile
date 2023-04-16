@@ -30,7 +30,7 @@ $(OUT_POS): $(OBJ_DIR)/position.o $(OBJ_DIR)/logger.o $(OBJ_DIR)/csv.o $(OBJ_DIR
 
 
 $(OBJ_DIR)/ClubsAgeStats.o: $(SRC_DIR)/main.cpp $(SRC_DIR)/logger.hpp $(SRC_DIR)/colorprint.hpp $(SRC_DIR)/csv.hpp \
-							$(SRC_DIR)/consts.hpp $(SRC_DIR)/strutils.hpp
+							$(SRC_DIR)/consts.hpp $(SRC_DIR)/strutils.hpp | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/country.o: $(SRC_DIR)/country.cpp $(SRC_DIR)/logger.hpp $(SRC_DIR)/colorprint.hpp $(SRC_DIR)/strutils.hpp

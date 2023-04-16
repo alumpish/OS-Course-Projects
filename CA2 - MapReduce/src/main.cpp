@@ -97,7 +97,6 @@ int main(int argc, const char* argv[]) {
         return EXIT_FAILURE;
     }
 
-
     if (createPosList(pos_list, consts::POS_PATH))
         return EXIT_FAILURE;
 
@@ -107,6 +106,7 @@ int main(int argc, const char* argv[]) {
     if (get_directory_folders(argv[1], countries))
         return EXIT_FAILURE;
 
+    // create unnamed pipes for country
     int country_pipes[countries.size()][2];
     for (int i = 0; i < countries.size(); i++) {
         if (pipe(country_pipes[i]) == -1) {
@@ -115,7 +115,7 @@ int main(int argc, const char* argv[]) {
         }
     }
 
-
+    // create process for each counrty
     for (int i = 0; i < countries.size(); i++) {
         int pid = fork();
 
@@ -141,7 +141,7 @@ int main(int argc, const char* argv[]) {
         }
     }
 
-    sleep(1.5);
+    sleep(1);
 
     // create process for each position
     for (int i = 0; i < pos_wanted.size(); i++) {
@@ -158,15 +158,15 @@ int main(int argc, const char* argv[]) {
                 return 1;
             }
         }
-
-        sleep(2);
     }
 
+    // wait for country children
     for (int i = 0; i < countries.size(); i++) {
         int status;
         wait(&status);
     }
 
+    // wait for position children
     for (int i = 0; i < pos_wanted.size(); i++) {
         int status;
         wait(&status);

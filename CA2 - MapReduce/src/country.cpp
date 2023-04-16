@@ -57,6 +57,7 @@ int main(int argc, const char* argv[]) {
     if (get_directory_files(argv[1], clubs))
         return EXIT_FAILURE;
 
+    // create unnamed pipes for clubs
     int club_pipes[clubs.size()][2];
     for (int i = 0; i < clubs.size(); i++) {
         if (pipe(club_pipes[i]) == -1) {
@@ -65,6 +66,7 @@ int main(int argc, const char* argv[]) {
         }
     }
 
+    // create process for each club
     for (int i = 0; i < clubs.size(); i++) {
         int pid = fork();
 
@@ -89,6 +91,7 @@ int main(int argc, const char* argv[]) {
         }
     }
 
+    // wait for club children
     for (int i = 0; i < clubs.size(); i++) {
         int status;
         wait(&status);
