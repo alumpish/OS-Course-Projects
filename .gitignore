@@ -52,7 +52,7 @@ Mkfile.old
 dkms.conf
 
 # vscode
-*/.vscode/
+.vscode/
 
 *.out
 *.txt
